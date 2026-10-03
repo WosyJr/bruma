@@ -6,6 +6,7 @@ const P = require('../lib/property');
 const A = require('../lib/archive');
 const Ct = require('../lib/court');
 const G = require('../lib/guilds');
+const pin = require('./property').pin;
 
 const esc = V.esc;
 
@@ -202,6 +203,59 @@ ${d.text ? `<section class="card"><div style="white-space:pre-wrap;line-height:1
     res.page({ title: 'Those who keep the County', body, active: 'who' });
   });
 
+
+  app.get('/the-guilds', (req, res) => {
+    const counts = G.counts();
+    const offices = O.all();
+    const people = U.list().filter(p => p.active);
+
+    const masterOf = gid => {
+      const o = offices.find(x => x.guild === gid && x.listed);
+      if (!o) return null;
+      const who = people.filter(p => p.office === o.id);
+      return { office: o, who };
+    };
+
+    const body = `
+<section class="card">
+  <h2>The Guilds of Bruma</h2>
+  <p class="lede">Three bodies hold charter in the County. A charter is a public thing \u2014 it says what the guild
+  may do and what it owes. Who stands on a guild roll, and what it renders, is the guild\u2019s own business.</p>
+</section>
+
+${O.GUILDS.map(g => {
+  const charter = G.charterFor(g.id);
+  const m = masterOf(g.id);
+  return `<section class="card">
+    <div class="eyebrow" style="margin-bottom:10px">Chartered by the County</div>
+    <h3 style="margin-top:0;font-size:28px">${esc(g.name)}</h3>
+    <div class="grid three" style="margin:16px 0 18px">
+      <div class="stat"><div class="k">On the roll</div><div class="v">${counts[g.id] || 0}</div>
+        <div class="n">${(counts[g.id] || 0) === 1 ? 'member' : 'members'}</div></div>
+      <div class="stat"><div class="k">${esc(m && m.office ? m.office.name : 'Master')}</div>
+        <div class="v" style="font-size:21px;font-family:var(--serif)">${m && m.who.length ? esc(m.who[0].name) : 'Vacant'}</div>
+        <div class="n">${m && m.who.length && m.who[0].style ? esc(m.who[0].style) : 'the hand the County deals with'}</div></div>
+      <div class="stat"><div class="k">Charter</div>
+        <div class="v" style="font-size:21px;font-family:var(--serif)">${charter ? 'Laid' : 'None'}</div>
+        <div class="n">${charter ? 'read it below' : 'not yet laid before the County'}</div></div>
+    </div>
+    ${charter
+      ? `<h3 style="font-size:20px">${esc(charter.title)}</h3>
+         <div style="white-space:pre-wrap;line-height:1.75">${esc(charter.text)}</div>`
+      : V.empty('No charter has been laid for this guild. Until one is, it holds nothing of the County.')}
+  </section>`;
+}).join('')}
+
+<section class="card">
+  <h3 style="margin-top:0">Joining a guild</h3>
+  <p class="lede">The County does not admit anyone to a guild. Each guild keeps its own roll and admits by its own
+  charter \u2014 find its hall in Bruma and ask the Master. If a guild has wronged you, that is a matter for the
+  court, and you may <a href="/petition">lay it there</a>.</p>
+</section>`;
+
+    res.page({ title: 'The Guilds of Bruma', body, active: 'the-guilds' });
+  });
+
   app.get('/petition', (req, res) => {
     const body = `
 <section class="card">
@@ -271,6 +325,14 @@ ${d.text ? `<section class="card"><div style="white-space:pre-wrap;line-height:1
     <button class="btn ghost" type="submit">Search</button>
     ${q ? `<a class="btn ghost small" href="/holdings">Clear</a>` : ''}
   </form>
+</section>
+
+<section class="card">
+  <div class="mapwrap">
+    <img src="/county-map.png" alt="A map of the County of Bruma">
+    ${P.all().map(h => pin(h, false)).join('')}
+  </div>
+  <p class="mapnote">Hover a pin to see what stands there and who holds it.</p>
 </section>
 
 <section class="card">

@@ -4,20 +4,26 @@ const U = require('../lib/users');
 
 const esc = V.esc;
 
-module.exports = function (app, { checkCsrf, wrap, back, need }) {
+module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
 
-  app.get('/officers', need('officers'), (req, res) => {
-    const people = U.list();
-    const offices = O.all();
+  app.get('/officers', needAny('officers', 'appoint'), (req, res) => {
+    const u = req.user;
+    const full = O.can(u, 'officers');
+    const mayAppoint = O.mayAppointTo(u);
+    const offices = O.all().filter(o => full || mayAppoint.includes(o.id));
+    const people = U.list().filter(p => full || mayAppoint.includes(p.office));
     const byOffice = {};
     people.forEach(p => { byOffice[p.office] = (byOffice[p.office] || 0) + 1; });
 
     const body = `
 <section class="card">
   <h2>The officers of the County</h2>
-  <p class="lede">Who stands in which office. The Count, the Countess and the Steward reach everything;
-  everyone else reaches what their office opens.</p>
+  <p class="lede">${full
+    ? 'Who stands in which office. The Count, the Countess and the Steward reach everything; everyone else reaches what their office opens.'
+    : 'The offices your own office may appoint to, and who stands in them.'}</p>
 </section>
+
+${offices.length ? '' : V.empty('Your office may not appoint to any other yet. Ask the Steward to set which offices it appoints to.')}
 
 <section class="card">
   <h3 style="margin-top:0">On the rolls</h3>
@@ -46,12 +52,12 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
       <div><label for="password">A word to get in with</label><input id="password" name="password" type="text" value="${esc(U.tempPassword())}" required></div>
     </div>
     <p class="hint">Give them that word yourself. They must set their own the first time they enter.</p>
-    <div class="btnrow"><button class="btn go" type="submit">Put them on the rolls</button>
-    <a class="btn ghost" href="/offices">The offices themselves</a></div>
+    <div class="btnrow"><button class="btn go" type="submit"${offices.length ? '' : ' disabled'}>Put them on the rolls</button>
+    ${full ? '<a class="btn ghost" href="/offices">The offices themselves</a>' : ''}</div>
   </form>
 </section>
 
-<section class="card">
+${full ? `<section class="card">
   <h3 style="margin-top:0">The offices</h3>
   ${V.table([
       { head: 'Office', cell: o => `<a href="/offices/${esc(o.id)}">${esc(o.name)}</a>` },
@@ -61,23 +67,28 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
       { head: 'What it is', cell: o => esc(o.note || '') }
     ], O.all())}
   <p style="margin:12px 0 0"><a class="btn ghost small" href="/offices">Make or amend an office</a></p>
-</section>`;
+</section>` : ''}`;
 
     res.page({ title: 'The officers', body, active: '', wide: true });
   });
 
-  app.post('/officers', checkCsrf, need('officers'), wrap((req, res) => {
+  app.post('/officers', checkCsrf, needAny('officers', 'appoint'), wrap((req, res) => {
     try {
+      if (!O.canAppointTo(req.user, req.body.office)) throw new Error('Your office may not appoint to that office.');
       const p = U.create(req.body);
       req.session.flash = { text: p.name + ' is on the rolls as ' + p.officeName + '. Give them the word you set; they must change it when they first enter.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/officers');
   }));
 
-  app.get('/officers/:username', need('officers'), (req, res) => {
+  app.get('/officers/:username', needAny('officers', 'appoint'), (req, res) => {
     const p = U.view(req.params.username);
     if (!p) return res.say('Nobody of that name', 'Nobody on the rolls answers to that.', 404);
-    const offices = O.all();
+    const full = O.can(req.user, 'officers');
+    if (!full && !O.canAppointTo(req.user, p.office)) {
+      return res.say('Not yours to amend', 'That officer does not stand in an office yours may appoint to.', 403);
+    }
+    const offices = O.all().filter(o => full || O.canAppointTo(req.user, o.id));
 
     const body = `
 <section class="card">
@@ -122,7 +133,11 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
     res.page({ title: p.name, body, active: '' });
   });
 
-  app.post('/officers/:username', checkCsrf, need('officers'), wrap((req, res) => {
+  app.post('/officers/:username', checkCsrf, needAny('officers', 'appoint'), wrap((req, res) => {
+    const target = U.view(req.params.username);
+    if (target && !O.can(req.user, 'officers') && !O.canAppointTo(req.user, target.office)) {
+      return res.say('Not yours to amend', 'That officer does not stand in an office yours may appoint to.', 403);
+    }
     try {
       U.update(req.params.username, {
         name: req.body.name,
@@ -136,7 +151,11 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
     res.redirect('/officers/' + encodeURIComponent(req.params.username));
   }));
 
-  app.post('/officers/:username/word', checkCsrf, need('officers'), wrap((req, res) => {
+  app.post('/officers/:username/word', checkCsrf, needAny('officers', 'appoint'), wrap((req, res) => {
+    const target = U.view(req.params.username);
+    if (target && !O.can(req.user, 'officers') && !O.canAppointTo(req.user, target.office)) {
+      return res.say('Not yours to amend', 'That officer does not stand in an office yours may appoint to.', 403);
+    }
     try {
       U.update(req.params.username, { password: req.body.password, mustChange: true });
       req.session.flash = { text: 'The word is set. Give it to them yourself.' };
@@ -144,7 +163,11 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
     res.redirect('/officers/' + encodeURIComponent(req.params.username));
   }));
 
-  app.post('/officers/:username/strike', checkCsrf, need('officers'), wrap((req, res) => {
+  app.post('/officers/:username/strike', checkCsrf, needAny('officers', 'appoint'), wrap((req, res) => {
+    const target = U.view(req.params.username);
+    if (target && !O.can(req.user, 'officers') && !O.canAppointTo(req.user, target.office)) {
+      return res.say('Not yours to amend', 'That officer does not stand in an office yours may appoint to.', 403);
+    }
     try {
       U.remove(req.params.username);
       req.session.flash = { text: 'Struck from the rolls.' };
@@ -226,7 +249,7 @@ ${offices.map(o => `<section class="card">
 
   app.post('/offices', checkCsrf, need('offices'), wrap((req, res) => {
     try {
-      const o = O.create({ ...req.body, perms: list(req.body.perms), all: !!req.body.all, listed: !!req.body.listed });
+      const o = O.create({ ...req.body, perms: list(req.body.perms), appoints: list(req.body.appoints), all: !!req.body.all, listed: !!req.body.listed });
       req.session.flash = { text: 'The office of ' + o.name + ' now stands.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/offices');
@@ -246,6 +269,7 @@ ${offices.map(o => `<section class="card">
           note: req.body.note,
           all: !!req.body.all,
           listed: !!req.body.listed,
+          appoints: list(req.body.appoints),
           perms: list(req.body.perms)
         });
         req.session.flash = { text: 'The office of ' + o.name + ' is amended.' };

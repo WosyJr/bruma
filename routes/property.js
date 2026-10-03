@@ -18,6 +18,11 @@ function pin(p, on) {
         <path d="${P.kindPath(p.kind)}"/>
       </g>
     </svg>
+    <span class="pinlabel" aria-hidden="true">
+      <b>${esc(p.name)}</b>
+      <i>${esc(P.kindName(p.kind))}${p.place ? ' \u00b7 ' + esc(p.place) : ''}</i>
+      <u>${p.holder ? 'Held by ' + esc(p.holder) : esc(st.name)}</u>
+    </span>
   </button>`;
 }
 
@@ -215,3 +220,5 @@ function holdingCard(p, u, csrf) {
     ], rents)}` : ''}
 </section>`;
 }
+
+module.exports.pin = pin;

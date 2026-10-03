@@ -64,7 +64,8 @@ ${word ? `<section class="card" style="margin-top:20px">
   <div class="choose">
     <a href="/proclamations"><h3>Proclamations</h3><p>The word of the County as it is given, posted here as it is posted on the door of the Great Hall.</p></a>
     <a href="/pass"><h3>The Pale Pass</h3><p>Whether the road north may be travelled, on what footing, and what the watch saw on it last.</p></a>
-    <a href="/laws"><h3>Laws &amp; Charters</h3><p>What the County holds everyone to, and the charters it has granted. The law is not kept behind a door.</p></a>
+    <a href="/laws"><h3>Laws &amp; Charters</h3><p>The Lex Brumae, the legal code of the County, title by title. The law is not kept behind a door.</p></a>
+    <a href="/the-guilds"><h3>The Guilds</h3><p>The three bodies that hold charter, what each may do, and whose hand the County deals with.</p></a>
     <a href="/holdings"><h3>Who Holds What</h3><p>The holdings of Bruma and who is seized of them.</p></a>
     <a href="/judgments"><h3>Judgments</h3><p>What the court has decided, once it has decided it.</p></a>
     <a href="/who"><h3>The Court</h3><p>The offices of the County and who holds them. Any of them may be written to.</p></a>
