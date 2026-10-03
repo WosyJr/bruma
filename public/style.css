@@ -190,3 +190,73 @@ ul.plain li:last-child{border-bottom:none}
   h2{font-size:28px}
   .big,.stat .v{font-size:30px}
 }
+
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes emberglow{0%,100%{opacity:.78;transform:translateX(-50%) scale(1)}
+  50%{opacity:1;transform:translateX(-50%) scale(1.06)}}
+@keyframes sway{0%,100%{transform:rotate(-0.7deg)}50%{transform:rotate(0.7deg)}}
+@keyframes droppin{from{opacity:0;transform:translate(-50%,-180%) scale(.6)}
+  to{opacity:1;transform:translate(-50%,-100%) scale(1)}}
+@keyframes beat{0%,100%{opacity:.25;transform:scale(1)}50%{opacity:.75;transform:scale(1.28)}}
+@keyframes flicker{0%,100%{opacity:.9}42%{opacity:1}58%{opacity:.82}}
+@keyframes slidein{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+@keyframes sweep{from{background-position:-180% 0}to{background-position:280% 0}}
+
+.crest::after{animation:emberglow 7s ease-in-out infinite}
+.hero::before{animation:emberglow 9s ease-in-out infinite}
+.arms{transform-origin:50% 4%;animation:sway 9s ease-in-out infinite}
+.rule svg path{animation:flicker 3.4s ease-in-out infinite}
+
+.wrap > *{animation:rise .42s cubic-bezier(.22,.8,.3,1) both}
+.wrap > *:nth-child(1){animation-delay:.02s}
+.wrap > *:nth-child(2){animation-delay:.07s}
+.wrap > *:nth-child(3){animation-delay:.12s}
+.wrap > *:nth-child(4){animation-delay:.17s}
+.wrap > *:nth-child(5){animation-delay:.21s}
+.wrap > *:nth-child(n+6){animation-delay:.25s}
+
+.flash{animation:slidein .34s cubic-bezier(.22,.8,.3,1) both}
+
+.halls a{transition:color .18s ease,background .18s ease}
+.halls a::after{content:"";position:absolute;left:16px;right:16px;bottom:-1px;height:2px;
+  background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .22s cubic-bezier(.22,.8,.3,1)}
+.halls a{position:relative}
+.halls a:hover::after{transform:scaleX(1)}
+.halls a.on::after{transform:scaleX(1)}
+.halls a.on{border-bottom-color:transparent}
+
+.btn{transition:background .18s ease,border-color .18s ease,color .18s ease,transform .12s ease,box-shadow .2s ease}
+.btn:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(224,154,62,.22)}
+.btn:active{transform:translateY(0);box-shadow:none}
+.btn.ghost:hover{box-shadow:0 5px 16px rgba(224,154,62,.1)}
+.btn.danger:hover{box-shadow:0 5px 16px rgba(185,69,47,.28)}
+
+.card,.stat,.choose a{transition:border-color .22s ease,background .22s ease,transform .18s ease}
+.choose a:hover{transform:translateY(-2px)}
+.stat:hover{border-color:var(--edge2)}
+
+input,select,textarea{transition:border-color .16s ease,background .16s ease}
+tbody tr{transition:background .14s ease}
+a{transition:color .15s ease}
+.tag{transition:background .18s ease}
+
+.pin{animation:droppin .5s cubic-bezier(.3,1.5,.5,1) both}
+.pin svg{transition:transform .2s cubic-bezier(.3,1.4,.5,1)}
+.pin .ring{animation:beat 2.4s ease-in-out infinite;transform-origin:14px 13px}
+.mapwrap img{transition:filter .4s ease}
+.mapwrap:hover img{filter:sepia(.14) saturate(.95) brightness(.95) contrast(1.03)}
+
+.counting{background:linear-gradient(90deg,var(--bright) 0%,var(--bright) 42%,#FFF3DC 50%,var(--bright) 58%,var(--bright) 100%);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:sweep 1.1s ease-out 1}
+
+details > summary{transition:color .15s ease}
+#desk,#enterform{animation:rise .3s cubic-bezier(.22,.8,.3,1) both}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;scroll-behavior:auto !important}
+  .arms,.crest::after,.hero::before,.pin .ring,.rule svg path{animation:none !important}
+  .btn:hover,.choose a:hover{transform:none}
+}
