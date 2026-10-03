@@ -182,6 +182,11 @@ ${offices.map(o => `<section class="card">
       <b>Holds the County</b> — reaches every hall and every power, now and whatever is added later
     </label>
     ${o.fixed ? '<input type="hidden" name="all" value="1">' : ''}
+    <label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:15px;color:var(--ink);margin-top:8px">
+      <input type="checkbox" name="listed" value="1"${o.listed ? ' checked' : ''} style="width:auto">
+      <b>Named publicly</b> — this office and who holds it show on the public court page. Leave it off for
+      anyone who should be found out in Bruma rather than read about.
+    </label>
     ${o.all ? '' : `<fieldset><legend>What it opens</legend>
       ${O.PERMS.map(group => `<h3 style="margin:14px 0 4px;font-size:16px">${esc(group[0])}</h3>
         <div class="checks">${group[1].map(p => `<label><input type="checkbox" name="perms" value="${p[0]}"${o.perms.includes(p[0]) ? ' checked' : ''}> ${esc(p[1])}</label>`).join('')}</div>`).join('')}
@@ -204,6 +209,10 @@ ${offices.map(o => `<section class="card">
     </div>
     <label for="newnote">What the office is</label>
     <input id="newnote" name="note" type="text">
+    <label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:15px;color:var(--ink);margin-top:14px">
+      <input type="checkbox" name="listed" value="1" checked style="width:auto">
+      <b>Named publicly</b> — shows on the public court page
+    </label>
     <fieldset><legend>What it opens</legend>
       ${O.PERMS.map(group => `<h3 style="margin:14px 0 4px;font-size:16px">${esc(group[0])}</h3>
         <div class="checks">${group[1].map(p => `<label><input type="checkbox" name="perms" value="${p[0]}"> ${esc(p[1])}</label>`).join('')}</div>`).join('')}
@@ -217,7 +226,7 @@ ${offices.map(o => `<section class="card">
 
   app.post('/offices', checkCsrf, need('offices'), wrap((req, res) => {
     try {
-      const o = O.create({ ...req.body, perms: list(req.body.perms), all: !!req.body.all });
+      const o = O.create({ ...req.body, perms: list(req.body.perms), all: !!req.body.all, listed: !!req.body.listed });
       req.session.flash = { text: 'The office of ' + o.name + ' now stands.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/offices');
@@ -236,6 +245,7 @@ ${offices.map(o => `<section class="card">
           guild: req.body.guild,
           note: req.body.note,
           all: !!req.body.all,
+          listed: !!req.body.listed,
           perms: list(req.body.perms)
         });
         req.session.flash = { text: 'The office of ' + o.name + ' is amended.' };

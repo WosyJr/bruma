@@ -7,15 +7,18 @@ const T = require('../lib/treasury');
 const Ct = require('../lib/court');
 const A = require('../lib/archive');
 const G = require('../lib/guilds');
+const Pr = require('../lib/proclaim');
 
 const esc = V.esc;
 
 module.exports = function (app, { checkCsrf, wrap, back }) {
 
   app.get('/', (req, res) => {
-    const onDuty = W.onDuty();
     const prop = P.summary();
-    const court = Ct.summary();
+    const pass = Pr.pass();
+    const passState = Pr.STATE_BY_ID[pass.state] || Pr.STATES[0];
+    const word = Pr.latest();
+    const judged = Ct.all().filter(m => m.stage === 'judged' && m.judgment).length;
 
     const body = `
 <section class="hero">
@@ -26,7 +29,7 @@ module.exports = function (app, { checkCsrf, wrap, back }) {
     <div class="btnrow">
       ${req.user
         ? `<a class="btn" href="/hall">Into the Great Hall</a><a class="btn ghost" href="/court">Who sits at court</a>`
-        : `<a class="btn" href="/login">Enter the Hall</a><a class="btn ghost" href="/archive">Read the archive</a>`}
+        : `<a class="btn" href="/proclamations">Read the County’s word</a><a class="btn ghost" href="/login">Enter the Hall</a>`}
     </div>
   </div>
 </section>
@@ -38,21 +41,43 @@ module.exports = function (app, { checkCsrf, wrap, back }) {
 </div>
 
 <div class="grid three" style="margin-top:28px">
-  <div class="stat"><div class="k">On the watch</div><div class="v">${onDuty.length}</div><div class="n">${onDuty.length === 1 ? 'guard standing now' : 'guards standing now'}</div></div>
-  <div class="stat"><div class="k">Holdings on the roll</div><div class="v">${prop.total}</div><div class="n">${prop.byState.vacant || 0} standing vacant</div></div>
-  <div class="stat"><div class="k">Before the court</div><div class="v">${court.open}</div><div class="n">${court.open === 1 ? 'matter waiting' : 'matters waiting'}</div></div>
+  <div class="stat"><div class="k">The Pale Pass</div>
+    <div class="v" style="font-size:24px;line-height:1.35">${esc(passState.name)}</div>
+    <div class="n">${pass.looked ? 'last looked ' + esc(V.when(pass.looked)) : 'no word yet'} · <a href="/pass">the notice</a></div></div>
+  <div class="stat"><div class="k">Holdings on the roll</div><div class="v">${prop.total}</div>
+    <div class="n">${prop.byState.vacant || 0} standing vacant · <a href="/holdings">who holds what</a></div></div>
+  <div class="stat"><div class="k">Judgments given</div><div class="v">${judged}</div>
+    <div class="n">posted by the court · <a href="/judgments">read them</a></div></div>
 </div>
 
+${word ? `<section class="card" style="margin-top:20px">
+  <div class="eyebrow" style="margin-bottom:12px">The latest word of the County</div>
+  <h3 style="margin-top:0;font-size:27px">${esc(word.title)}</h3>
+  <p class="hint" style="margin:0 0 14px">${esc(word.hand)}${word.dated ? ' · ' + esc(word.dated) : ''}</p>
+  <p style="color:var(--muted);line-height:1.7">${esc(word.text.slice(0, 340))}${word.text.length > 340 ? '…' : ''}</p>
+  <div class="btnrow"><a class="btn ghost" href="/proclamations/${esc(word.id)}">Read it in full</a>
+  <a class="btn ghost" href="/proclamations">All proclamations</a></div>
+</section>` : ''}
+
 <section class="card" style="margin-top:20px">
-  <h3 style="margin-top:0">What is kept here</h3>
+  <h3 style="margin-top:0">Open to anyone</h3>
   <div class="choose">
-    <a href="/watch"><h3>The Watch</h3><p>Guards clock on and off; every shift is written into the log, with the hours each guard has stood.</p></a>
-    <a href="/property"><h3>The Property Roll</h3><p>Every holding in the County pinned upon the map, with who holds it and what rent it renders.</p></a>
-    <a href="/treasury"><h3>The Treasury</h3><p>Money in and money out, entry by entry, with the balance of the County standing against it.</p></a>
-    <a href="/guilds"><h3>The Guilds</h3><p>The Synod, the Miners Guild and the Fighters Guild — their charters, their rolls and their tithes.</p></a>
-    <a href="/court"><h3>The Court</h3><p>Matters laid before the County, the hearings set upon them and the judgments given.</p></a>
-    <a href="/archive"><h3>The Archive</h3><p>Every charter, law, deed and dispatch the County has set down, kept and searchable.</p></a>
+    <a href="/proclamations"><h3>Proclamations</h3><p>The word of the County as it is given, posted here as it is posted on the door of the Great Hall.</p></a>
+    <a href="/pass"><h3>The Pale Pass</h3><p>Whether the road north may be travelled, on what footing, and what the watch saw on it last.</p></a>
+    <a href="/laws"><h3>Laws &amp; Charters</h3><p>What the County holds everyone to, and the charters it has granted. The law is not kept behind a door.</p></a>
+    <a href="/holdings"><h3>Who Holds What</h3><p>The holdings of Bruma and who is seized of them.</p></a>
+    <a href="/judgments"><h3>Judgments</h3><p>What the court has decided, once it has decided it.</p></a>
+    <a href="/who"><h3>The Court</h3><p>The offices of the County and who holds them. Any of them may be written to.</p></a>
+    <a href="/petition"><h3>Lay a Petition</h3><p>Anyone under the County’s protection may lay a matter before it, with no account and no leave asked.</p></a>
   </div>
+</section>
+
+<section class="card">
+  <h3 style="margin-top:0">Behind the hall door</h3>
+  <p class="lede">The watch and its hours, the treasury, the guild rolls and the matters still before the bench
+  are kept for those who hold office in the County. What happens in Bruma is found out in Bruma.</p>
+  ${req.user ? `<p><a class="btn ghost" href="/hall">Into the Great Hall</a></p>`
+    : `<p><a class="btn ghost" href="/login">Enter the Hall</a></p>`}
 </section>`;
 
     res.page({ title: '', body, active: '' });
