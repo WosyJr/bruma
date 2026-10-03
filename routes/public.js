@@ -18,15 +18,26 @@ module.exports = function (app, { checkCsrf, wrap, back }) {
     const court = Ct.summary();
 
     const body = `
-<section class="card">
-  <h2>The County of Bruma</h2>
-  <p class="lede">The northernmost county of Cyrodiil, holding the Jerall Mountains, the Silver Road and the Pale Pass
-  into Skyrim. What the County keeps — its watch, its holdings, its purse, its guilds and its court — is kept here.</p>
-  ${req.user ? `<p><a class="btn" href="/hall">Into the Great Hall</a></p>`
-    : `<p><a class="btn" href="/login">Enter the Hall</a></p>`}
+<section class="hero">
+  <div class="heroin">
+    <div class="eyebrow">The County Seat · Jerall Mountains</div>
+    <h2>The County of Bruma</h2>
+    <p class="lede">Northernmost county of Cyrodiil. Keeper of the Pale Pass, and the last warm hall before Skyrim.</p>
+    <div class="btnrow">
+      ${req.user
+        ? `<a class="btn" href="/hall">Into the Great Hall</a><a class="btn ghost" href="/court">Who sits at court</a>`
+        : `<a class="btn" href="/login">Enter the Hall</a><a class="btn ghost" href="/archive">Read the archive</a>`}
+    </div>
+  </div>
 </section>
 
-<div class="grid three">
+<div class="rule">
+  <div class="line"></div>
+  <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M11 2c3 4 5 6 5 9a5 5 0 0 1-10 0c0-3 2-5 5-9Z" fill="#E09A3E"/></svg>
+  <div class="line"></div>
+</div>
+
+<div class="grid three" style="margin-top:28px">
   <div class="stat"><div class="k">On the watch</div><div class="v">${onDuty.length}</div><div class="n">${onDuty.length === 1 ? 'guard standing now' : 'guards standing now'}</div></div>
   <div class="stat"><div class="k">Holdings on the roll</div><div class="v">${prop.total}</div><div class="n">${prop.byState.vacant || 0} standing vacant</div></div>
   <div class="stat"><div class="k">Before the court</div><div class="v">${court.open}</div><div class="n">${court.open === 1 ? 'matter waiting' : 'matters waiting'}</div></div>
@@ -225,13 +236,7 @@ ${O.can(u, 'watchclock') ? `<section class="card">
     }
   }));
 
-  app.get('/favicon.svg', (req, res) => {
-    res.type('image/svg+xml').set('Cache-Control', 'public, max-age=604800').send(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 72">
-<path d="M32 2 60 11v28c0 16-12 26-28 31C16 65 4 55 4 39V11z" fill="#27323C" stroke="#9C7A33" stroke-width="3"/>
-<path d="M32 20 20 44h24z" fill="#E8EEF2"/><path d="M32 33 25 44h14z" fill="#3E5668"/>
-<circle cx="32" cy="14" r="3.4" fill="#9C7A33"/></svg>`);
-  });
+  app.get(['/favicon.ico', '/favicon.svg'], (req, res) => res.redirect(301, '/bruma-seal.png'));
 };
 
 function hallNote(id) {

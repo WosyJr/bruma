@@ -4,15 +4,17 @@ const P = require('../lib/property');
 
 const esc = V.esc;
 
+const PIN_RING = { held: '#E09A3E', vacant: '#A8967C', crown: '#CBA55E', disputed: '#D1533A', ruined: '#7A6B58' };
+
 function pin(p, on) {
   const st = P.STATE_BY_ID[p.state] || P.STATES[1];
-  const fill = { held: '#3E5668', vacant: '#8B7A60', crown: '#9C7A33', disputed: '#7A2520', ruined: '#5A5048' }[p.state] || '#3E5668';
+  const ring = PIN_RING[p.state] || '#E09A3E';
   return `<button type="button" class="pin${on ? ' on' : ''}" style="left:${p.x}%;top:${p.y}%" data-id="${esc(p.id)}"
     title="${esc(p.name)} — ${esc(st.name)}${p.holder ? ', held by ' + esc(p.holder) : ''}">
     <svg viewBox="0 0 28 36" aria-hidden="true">
-      <circle class="ring" cx="14" cy="13" r="12.5" fill="none" stroke="#F7F2E8" stroke-width="2.5"/>
-      <path d="M14 35C14 35 25 22.5 25 13A11 11 0 1 0 3 13c0 9.5 11 22 11 22z" fill="${fill}" stroke="#F2E9DB" stroke-width="1.6"/>
-      <g transform="translate(7 6) scale(0.5)" fill="none" stroke="#F7F2E8" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
+      <circle class="ring" cx="14" cy="13" r="13" fill="none" stroke="${ring}" stroke-width="2" opacity=".55"/>
+      <path d="M14 35C14 35 25 22.5 25 13A11 11 0 1 0 3 13c0 9.5 11 22 11 22z" fill="#1F1710" stroke="${ring}" stroke-width="2"/>
+      <g transform="translate(7 6) scale(0.5)" fill="none" stroke="${ring}" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round">
         <path d="${P.kindPath(p.kind)}"/>
       </g>
     </svg>
