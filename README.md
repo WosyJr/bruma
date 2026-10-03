@@ -57,6 +57,22 @@ and Citizen. Offices are not fixed in the code — make, amend or strike them in
 | **The Court** | Matters laid before the County, papers entered upon them, hearings set and judgments given. Anyone may lay a matter; only the court may judge. |
 | **The Archive** | Every charter, law, deed, order and dispatch, on labelled shelves, searchable, held as text or as a link. |
 
+## What is public, and what is not
+
+Anyone may read these without an account:
+
+**Proclamations** · **The Pale Pass** · **Laws & Charters** (the archive's law and charter shelves only)
+· **Who Holds What** (holdings and their holders — never their rents) · **Judgments** (verdicts once given,
+never open matters) · **The Court** (offices and who holds them) · **Lay a Petition** (anyone may petition
+the County with no account)
+
+Everything else is behind the hall door, and deliberately so. **The watch is never public** — not who is
+standing, not the roster, not the log, not the hours. Nor is the Treasury, the guild rolls and tithes, the
+matters still before the bench, or the officer admin. What happens in Bruma is found out in Bruma.
+
+An office is named on the public court page only when **Named publicly** is ticked for it in
+*The Officers → The offices*. Guardsman and Citizen start unticked, so the watch is not readable as a roster.
+
 ## The map
 
 `public/county-map.png`. Pins are stored as a percentage across and down, so swapping

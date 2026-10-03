@@ -81,6 +81,7 @@ function needAny() {
 const ctx = { checkCsrf, wrap, back, need, needAny };
 
 require('./routes/public')(app, ctx);
+require('./routes/open')(app, ctx);
 require('./routes/watch')(app, ctx);
 require('./routes/property')(app, ctx);
 require('./routes/treasury')(app, ctx);
