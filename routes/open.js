@@ -7,8 +7,21 @@ const A = require('../lib/archive');
 const Ct = require('../lib/court');
 const G = require('../lib/guilds');
 const pin = require('./property').pin;
+const Lex = require('../lib/lexfmt');
 
 const esc = V.esc;
+
+const SMALL = new Set(['the','a','an','and','or','of','in','on','to','for','by','with','at','from','against','et']);
+const titleCaseOf = n => String(n || '')
+  .replace(/([A-Z])([A-Z']+)/g, (m, a, b) => a + b.toLowerCase())
+  .split(/\s+/)
+  .map((w, i) => (i > 0 && SMALL.has(w.toLowerCase().replace(/[^a-z]/g, '')) ? w.toLowerCase() : w))
+  .join(' ');
+const splitLatin = n => {
+  const tc = titleCaseOf(n);
+  const m = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(tc);
+  return m ? { name: m[1].trim(), latin: m[2].trim() } : { name: tc, latin: '' };
+};
 
 const PUBLIC_SHELVES = ['charter', 'law'];
 
@@ -91,30 +104,71 @@ ${passBanner(p)}
 
   app.get('/laws', (req, res) => {
     const q = String(req.query.q || '');
-    const rows = A.search(q, '').filter(d => PUBLIC_SHELVES.includes(d.shelf));
+    const all = A.search('', '').filter(d => PUBLIC_SHELVES.includes(d.shelf));
+    const lex = all.filter(d => d.lex).sort((a, b) => a.no - b.no);
+    const other = all.filter(d => !d.lex);
+
+    const hits = [];
+    const needle = q.trim().toLowerCase();
+    if (needle) {
+      all.forEach(d => {
+        Lex.articles(d.text).forEach(a => {
+          if ((a.no + ' ' + a.name).toLowerCase().includes(needle)) hits.push({ d, a });
+        });
+      });
+    }
+    const docHits = needle ? all.filter(d => (d.title + ' ' + d.text).toLowerCase().includes(needle)) : [];
+
+    const roman = t => {
+      const m = /TITLE\s+([IVXL]+)/i.exec(t.title || '');
+      return m ? m[1] : '\u00a7';
+    };
+    const shortName = t => String(t.title || '').replace(/^Lex Brumae\s*\u2014\s*/, '').replace(/^TITLE\s+[IVXL]+\s*\u00b7\s*/i, '');
+    const split = t => splitLatin(shortName(t));
 
     const body = `
 <section class="card">
   <h2>Laws &amp; Charters</h2>
-  <p class="lede">What the County has set down and holds everyone to. The law of Bruma is not kept behind a door.</p>
+  <p class="lede">The <b>Lex Brumae</b> is the legal code of the County \u2014 ${lex.reduce((n, d) => n + Lex.articles(d.text).length, 0)} articles
+  across ${lex.length} titles, binding on everyone within these borders. It is posted openly, and ignorance of it is no defence.</p>
   <form method="get" action="/laws" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <input type="text" name="q" value="${esc(q)}" placeholder="Search the laws and charters" style="max-width:320px">
-    <button class="btn ghost" type="submit">Search</button>
+    <input type="text" name="q" value="${esc(q)}" placeholder="Search by offence, article number or word" style="max-width:360px">
+    <button class="btn ghost" type="submit">Search the law</button>
     ${q ? `<a class="btn ghost small" href="/laws">Clear</a>` : ''}
   </form>
 </section>
 
-<section class="card">
-  ${rows.length ? `<div class="rows">${rows.slice(0, 120).map(d => `<div class="row">
-    <div class="main">
-      <a href="/laws/${esc(d.id)}" style="font-family:Alegreya,Georgia,serif;font-size:19px">${esc(d.title)}</a>
-      <div class="hint">${esc(A.shelfName(d.shelf))}${d.dated ? ' · ' + esc(d.dated) : ''}</div>
-    </div>
-    <div class="side">no. ${d.no}</div>
-  </div>`).join('')}</div>` : V.empty(q ? 'Nothing in the laws matches that.' : 'No laws or charters have been set down yet.')}
-</section>`;
+${q ? `<section class="card">
+  <h3 style="margin-top:0">${hits.length + docHits.length ? 'What matches \u201c' + esc(q) + '\u201d' : 'Nothing in the law matches \u201c' + esc(q) + '\u201d'}</h3>
+  ${hits.length ? `<div class="rows">${hits.slice(0, 60).map(h => `<div class="row">
+    <div class="main"><a href="/laws/${esc(h.d.id)}#art-${esc(h.a.no)}" style="font-family:Alegreya,Georgia,serif;font-size:18px">Article ${esc(h.a.no)} \u00b7 ${esc(h.a.name)}</a>
+      <div class="hint">${esc(shortName(h.d))}</div></div>
+  </div>`).join('')}</div>` : ''}
+  ${docHits.length ? `<p class="hint" style="margin-top:14px">Also found in: ${docHits.slice(0, 10).map(d => `<a href="/laws/${esc(d.id)}">${esc(shortName(d))}</a>`).join(' \u00b7 ')}</p>` : ''}
+</section>` : ''}
 
-    res.page({ title: 'Laws & Charters', body, active: 'laws' });
+${lex.length ? `<section class="card">
+  <h3 style="margin-top:0">The Lex Brumae</h3>
+  <div class="grid two" style="margin-top:16px">
+    ${lex.map(d => `<a class="titlecard" href="/laws/${esc(d.id)}">
+      <span class="roman">${esc(roman(d))}</span>
+      <span><b>${esc(split(d).name)}</b>${split(d).latin ? `<i style="font-style:italic;color:var(--soft);font-size:14.5px;margin-top:2px">${esc(split(d).latin)}</i>` : ''}<i>${esc(Lex.summary(d.text) || 'Read it')}</i></span>
+    </a>`).join('')}
+  </div>
+</section>` : ''}
+
+${other.length ? `<section class="card">
+  <h3 style="margin-top:0">Charters and other instruments</h3>
+  <div class="rows">${other.map(d => `<div class="row">
+    <div class="main"><a href="/laws/${esc(d.id)}" style="font-family:Alegreya,Georgia,serif;font-size:19px">${esc(d.title)}</a>
+      <div class="hint">${esc(A.shelfName(d.shelf))}${d.dated ? ' \u00b7 ' + esc(d.dated) : ''}</div></div>
+    <div class="side">no. ${d.no}</div>
+  </div>`).join('')}</div>
+</section>` : ''}
+
+${!lex.length && !other.length ? V.empty('No laws or charters have been set down yet.') : ''}`;
+
+    res.page({ title: 'Laws & Charters', body, active: 'laws', wide: true });
   });
 
   app.get('/laws/:id', (req, res) => {
@@ -122,16 +176,54 @@ ${passBanner(p)}
     if (!d || d.struck || !PUBLIC_SHELVES.includes(d.shelf)) {
       return res.say('Not among the public laws', 'That document is not one the County posts openly.', 404);
     }
+    const arts = Lex.articles(d.text);
+    const shortName = String(d.title || '').replace(/^Lex Brumae\s*\u2014\s*/, '');
+    const roman = /TITLE\s+([IVXL]+)/i.exec(d.title || '');
+    const siblings = A.search('', '').filter(x => x.lex && PUBLIC_SHELVES.includes(x.shelf)).sort((a, b) => a.no - b.no);
+    const at = siblings.findIndex(x => x.id === d.id);
+    const prev = at > 0 ? siblings[at - 1] : null;
+    const next = at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : null;
+    const trim = t => String(t || '').replace(/^Lex Brumae\s*\u2014\s*/, '').replace(/^TITLE\s+[IVXL]+\s*\u00b7\s*/i, '');
+    const titleName = n => splitLatin(n);
+
     const body = `
 <section class="card">
-  <h2>${esc(d.title)}</h2>
-  <p class="hint" style="margin:0 0 18px">${esc(A.shelfName(d.shelf))}${d.dated ? ' · ' + esc(d.dated) : ''}</p>
-  ${d.note ? `<p class="lede">${esc(d.note)}</p>` : ''}
-  ${d.link ? `<p><a class="btn ghost small" href="${esc(d.link)}" rel="noopener noreferrer" target="_blank">Open where it lives</a></p>` : ''}
-  <p><a href="/laws">All laws and charters</a></p>
+  <div class="eyebrow" style="margin-bottom:10px">${d.lex ? 'The Lex Brumae' + (roman ? ' \u00b7 Title ' + esc(roman[1]) : '') : esc(A.shelfName(d.shelf))}</div>
+  <h2>${esc(titleName(trim(d.title) || shortName).name)}</h2>
+  ${titleName(trim(d.title)).latin ? `<p class="seat" style="margin:2px 0 6px;font-size:19px">${esc(titleName(trim(d.title)).latin)}</p>` : ''}
+  <p class="hint" style="margin:0">${esc(d.dated || '')}${arts.length ? ' \u00b7 ' + esc(Lex.summary(d.text)) : ''}</p>
+  ${d.link ? `<p style="margin-top:14px"><a class="btn ghost small" href="${esc(d.link)}" rel="noopener noreferrer" target="_blank">Open where it lives</a></p>` : ''}
 </section>
-${d.text ? `<section class="card"><div style="white-space:pre-wrap;line-height:1.75;font-size:18px">${esc(d.text)}</div></section>` : ''}`;
-    res.page({ title: d.title, body, active: 'laws' });
+
+<div class="lexcols">
+  <div>
+    <section class="card">
+      ${d.text ? Lex.render(d.text) : V.empty('This document has no text set down.')}
+    </section>
+
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap">
+        ${prev ? `<a class="btn ghost small" href="/laws/${esc(prev.id)}">\u2190 ${esc(titleName(trim(prev.title)).name)}</a>` : '<span></span>'}
+        ${next ? `<a class="btn ghost small" href="/laws/${esc(next.id)}">${esc(titleName(trim(next.title)).name)} \u2192</a>` : '<span></span>'}
+      </div>
+      <p style="margin:14px 0 0"><a href="/laws">All laws and charters</a></p>
+    </section>
+  </div>
+
+  <aside>
+    ${arts.length ? `<section class="card tight lextoc">
+      <div class="eyebrow" style="margin-bottom:10px">In this title</div>
+      <ol>${arts.map(a => `<li><a href="#art-${esc(a.no)}"><span>${esc(a.no)}</span>${esc(a.name)}</a></li>`).join('')}</ol>
+    </section>` : ''}
+    ${siblings.length ? `<section class="card tight">
+      <div class="eyebrow" style="margin-bottom:10px">The other titles</div>
+      <ul class="plain" style="margin:0">${siblings.filter(x => x.id !== d.id).map(x =>
+        `<li style="padding:6px 0"><a href="/laws/${esc(x.id)}" style="font-size:15px">${esc(titleName(trim(x.title)).name)}</a></li>`).join('')}</ul>
+    </section>` : ''}
+  </aside>
+</div>`;
+
+    res.page({ title: titleName(trim(d.title)).name, body, active: 'laws', wide: true });
   });
 
   app.get('/judgments', (req, res) => {
@@ -318,7 +410,7 @@ ${O.GUILDS.map(g => {
     const q = String(req.query.q || '');
     const body = `
 <section class="card">
-  <h2>Who holds what in the County</h2>
+  <h2>Property of the County</h2>
   <p class="lede">The holdings of Bruma and who is seized of them. What each renders to the County is not posted here.</p>
   <form method="get" action="/holdings" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
     <input type="text" name="q" value="${esc(q)}" placeholder="Search name, holder or place" style="max-width:320px">
@@ -328,11 +420,17 @@ ${O.GUILDS.map(g => {
 </section>
 
 <section class="card">
-  <div class="mapwrap">
-    <img src="/county-map.png" alt="A map of the County of Bruma">
-    ${P.all().map(h => pin(h, false)).join('')}
-  </div>
-  <p class="mapnote">Hover a pin to see what stands there and who holds it.</p>
+  ${P.MAPS.map(m => {
+    const on = P.all(m.id);
+    if (!on.length) return '';
+    return `<h3 style="margin-top:0">${esc(m.name)}</h3>
+    <p class="hint" style="margin:0 0 12px">${esc(m.note)} \u00b7 ${on.length} ${on.length === 1 ? 'holding' : 'holdings'}</p>
+    <div class="mapwrap" style="margin-bottom:22px">
+      <img src="${esc(m.file)}" alt="A map of ${esc(m.name)}">
+      ${on.map(h => pin(h, false)).join('')}
+    </div>`;
+  }).join('')}
+  ${P.all().length ? '<p class="mapnote">Hover a pin to see what stands there and who holds it.</p>' : V.empty('Nothing has been pinned on either map yet.')}
 </section>
 
 <section class="card">
@@ -345,7 +443,7 @@ ${O.GUILDS.map(g => {
       { head: 'Standing', cell: r => { const s = P.STATE_BY_ID[r.state] || P.STATES[1]; return `<span class="tag ${s.tag}">${esc(s.name)}</span>`; } }
     ], rows) : V.empty(q ? 'Nothing on the roll matches that.' : 'Nothing has been entered on the roll yet.')}
 </section>`;
-    res.page({ title: 'Who holds what', body, active: 'holdings' });
+    res.page({ title: 'Property', body, active: 'holdings' });
   });
 
   app.get('/proclaim', need('proclaim'), (req, res) => {

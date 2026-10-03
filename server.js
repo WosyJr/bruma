@@ -85,6 +85,8 @@ require('./routes/open')(app, ctx);
 require('./routes/watch')(app, ctx);
 require('./routes/property')(app, ctx);
 require('./routes/treasury')(app, ctx);
+require('./routes/taxes')(app, ctx);
+require('./routes/reckoner')(app, ctx);
 require('./routes/guilds')(app, ctx);
 require('./routes/court')(app, ctx);
 require('./routes/archive')(app, ctx);

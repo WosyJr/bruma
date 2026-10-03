@@ -1,6 +1,8 @@
 const V = require('../lib/views');
 const O = require('../lib/offices');
 const Ct = require('../lib/court');
+const Lex = require('../lib/lexindex');
+const T = require('../lib/treasury');
 
 const esc = V.esc;
 
@@ -36,6 +38,11 @@ ${O.can(u, 'courtfile') ? `<section class="card">
     </div>
     <label for="account">Set down what happened</label>
     <textarea id="account" name="account" placeholder="On the night of the sixth, the stable door was found open..." required></textarea>
+    ${O.can(u, 'courtsit') ? `<label for="articles">Charge it under the Lex Brumae, if it is a crime</label>
+    <select id="articles" name="articles" multiple size="6">
+      ${Lex.all().map(a => `<option value="${esc(a.no)}">Article ${esc(a.no)} \u00b7 ${esc(a.name)}</option>`).join('')}
+    </select>
+    <p class="hint">Hold Ctrl (or Cmd) to pick more than one. It can be charged later.</p>` : ''}
     <div class="btnrow"><button class="btn go" type="submit">Lay it before the court</button></div>
   </form>
 </section>` : ''}
@@ -60,6 +67,8 @@ ${closed.length ? `<section class="card">
       { head: 'Matter', cell: m => `<a href="/court/${esc(m.id)}">${esc(m.title)}</a>` },
       { head: 'Kind', cell: m => esc(Ct.kindName(m.kind)) },
       { head: 'Standing', cell: m => { const s = Ct.STAGE_BY_ID[m.stage] || Ct.STAGES[0]; return `<span class="tag ${s.tag}">${esc(s.name)}</span>`; } },
+      { head: 'Under', cell: m => (m.articles || []).length ? m.articles.map(a => `<span class="tag">Art. ${esc(a)}</span>`).join(' ') : '\u2014' },
+      { head: 'Fine', num: true, cell: m => m.fine ? V.septims(m.fine) : '\u2014' },
       { head: 'Judged by', cell: m => esc(m.judgedBy || '') },
       { head: 'When', cell: m => esc(V.when(m.judgedAt || m.at)) }
     ], closed.slice(0, 60))}
@@ -88,6 +97,18 @@ ${closed.length ? `<section class="card">
     }
     const s = Ct.STAGE_BY_ID[m.stage] || Ct.STAGES[0];
     const maySit = O.can(u, 'courtsit');
+    const fines = T.forMatter(m.id);
+    const suggest = [];
+    (m.articles || []).forEach(no => {
+      const a = Lex.get(no);
+      if (!a) return;
+      a.bands.forEach(b => {
+        if (!b.fine) return;
+        const name = (Lex.BAND_BY_ID[b.band] || {}).name || 'Penalty';
+        if (!suggest.some(x => x.name === name)) suggest.push({ name, fine: Lex.fineText(b.fine) });
+      });
+      if (!a.bands.length && a.fine) suggest.push({ name: 'Set', fine: Lex.fineText(a.fine) });
+    });
 
     const body = `
 <section class="card">
@@ -104,9 +125,25 @@ ${closed.length ? `<section class="card">
   <p style="margin-top:16px"><a href="/court">Back to the court roll</a></p>
 </section>
 
+${fines.length ? `<section class="card">
+  <h3 style="margin-top:0">Into the Treasury</h3>
+  ${V.table([
+      { head: 'Entry', num: true, cell: r => 'no. ' + r.no },
+      { head: 'When', cell: r => esc(V.when(r.at)) },
+      { head: 'Septims', num: true, cell: r => V.septims(r.amount) },
+      { head: 'From', cell: r => esc(r.party || '') },
+      { head: 'Head', cell: r => esc(T.catName(r.cat)) }
+    ], fines)}
+</section>` : ''}
+
 ${m.judgment ? `<section class="card">
   <h3 style="margin-top:0">Judgment</h3>
   <div style="white-space:pre-wrap;line-height:1.7">${esc(m.judgment)}</div>
+  ${(m.band || m.fine || m.term) ? `<div class="rows" style="margin-top:16px">
+    ${m.band ? `<div class="row"><div class="main">Band</div><div class="side"><span class="tag ${(Lex.BAND_BY_ID[m.band] || {}).tag || ''}">${esc((Lex.BAND_BY_ID[m.band] || {}).name || m.band)}</span></div></div>` : ''}
+    ${m.fine ? `<div class="row"><div class="main">Fine</div><div class="side">${V.septims(m.fine)} septims${m.treasuryNo ? ' \u00b7 Treasury no. ' + esc(m.treasuryNo) : ''}</div></div>` : ''}
+    ${m.term ? `<div class="row"><div class="main">Sentence</div><div class="side">${esc(m.term)}</div></div>` : ''}
+  </div>` : ''}
   <p class="hint" style="margin-top:12px">Given by ${esc(m.judgedBy || '')} on ${esc(V.when(m.judgedAt))}.</p>
 </section>` : ''}
 
@@ -128,7 +165,42 @@ ${m.judgment ? `<section class="card">
   </form>
 </section>
 
+${(m.articles || []).length ? `<section class="card">
+  <h3 style="margin-top:0">Charged under the Lex Brumae</h3>
+  ${m.articles.map(no => {
+    const a = Lex.get(no);
+    if (!a) return `<p class="lexprose">Article ${esc(no)} \u2014 no longer in the code.</p>`;
+    return `<article class="lexart">
+      <div class="lexhead">
+        <span class="lexno">Article ${esc(a.no)}</span>
+        <h4>${esc(a.name)}</h4>
+        <a class="lexlink" style="opacity:1" href="/laws/${esc(a.docId)}#art-${esc(a.no)}" title="Read it in the code">&#167;</a>
+      </div>
+      ${a.definition ? `<div class="lexfield"><div class="lexlabel">Definition</div><p>${esc(a.definition)}</p></div>` : ''}
+      ${a.bands.length
+        ? `<div class="lexfield"><div class="lexlabel">Penalty by band</div><div class="lextiers">${a.bands.map(b => `<div class="lextier"${m.band === b.band ? ' style="border-color:var(--accent);background:#241A10"' : ''}>
+            <span class="tag ${Lex.BAND_BY_ID[b.band] ? Lex.BAND_BY_ID[b.band].tag : ''}">${esc(Lex.BAND_BY_ID[b.band] ? Lex.BAND_BY_ID[b.band].name : 'Penalty')}</span>
+            <span>${esc(b.text)}${b.fine ? ` <b style="color:var(--eyebrow)">(${esc(Lex.fineText(b.fine))} septims)</b>` : ''}</span>
+          </div>`).join('')}</div></div>`
+        : a.penalty ? `<div class="lexfield"><div class="lexlabel">Penalty</div><p>${esc(a.penalty)}</p></div>` : ''}
+    </article>`;
+  }).join('')}
+</section>` : ''}
+
 ${maySit ? `<section class="card">
+  <h3 style="margin-top:0">Charge it under the law</h3>
+  <form method="post" action="/court/${esc(m.id)}/charge">${V.hidden(req.session.csrf)}
+    <label for="articles">Articles of the Lex Brumae</label>
+    <select id="articles" name="articles" multiple size="8">
+      ${Lex.all().map(a => `<option value="${esc(a.no)}"${(m.articles || []).includes(a.no) ? ' selected' : ''}>Article ${esc(a.no)} \u00b7 ${esc(a.name)}</option>`).join('')}
+    </select>
+    <p class="hint">Hold Ctrl (or Cmd) to pick more than one. Clearing them all drops the charge.</p>
+    <div class="btnrow"><button class="btn" type="submit">Charge it</button>
+    <a class="btn ghost" href="/reckoner">The penalty reckoner</a></div>
+  </form>
+</section>
+
+<section class="card">
   <h3 style="margin-top:0">Set a hearing</h3>
   <form method="post" action="/court/${esc(m.id)}/hearing">${V.hidden(req.session.csrf)}
     <div class="fields">
@@ -140,12 +212,25 @@ ${maySit ? `<section class="card">
 
   <h3>Give judgment</h3>
   <form method="post" action="/court/${esc(m.id)}/judge">${V.hidden(req.session.csrf)}
-    <label for="stage">How the matter stands</label>
-    <select id="stage" name="stage">
-      ${Ct.STAGES.map(x => `<option value="${x.id}"${m.stage === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}
-    </select>
+    <div class="fields">
+      <div><label for="stage">How the matter stands</label>
+        <select id="stage" name="stage">
+          ${Ct.STAGES.map(x => `<option value="${x.id}"${m.stage === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}
+        </select></div>
+      <div><label for="band">Band of the offence</label>
+        <select id="band" name="band">
+          <option value="">No band</option>
+          ${Lex.BANDS.map(x => `<option value="${x.id}"${m.band === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}
+        </select></div>
+      <div><label for="fine">Fine in septims</label>
+        <input id="fine" name="fine" type="number" min="0" step="1" value="${Number(m.fine) || ''}" placeholder="0"></div>
+    </div>
+    ${suggest.length ? `<p class="hint">The code suggests: ${suggest.map(x => `<b>${esc(x.name)}</b> ${esc(x.fine)}`).join(' \u00b7 ')} septims. The bench may depart from it, and should say why.</p>` : ''}
+    <label for="term">Term, labour or other sentence</label>
+    <input id="term" name="term" type="text" value="${esc(m.term || '')}" placeholder="Thirty days in the gaol, and the horse restored">
     <label for="judgment">The judgment of the court</label>
     <textarea id="judgment" name="judgment" placeholder="The court finds for the complainant...">${esc(m.judgment || '')}</textarea>
+    <p class="hint">A fine entered here is written into the Treasury against this matter the moment the judgment is given.</p>
     <div class="btnrow"><button class="btn go" type="submit">Give it</button></div>
   </form>
 </section>` : ''}`;
@@ -172,10 +257,20 @@ ${maySit ? `<section class="card">
     res.redirect('/court/' + req.params.id);
   }));
 
+  app.post('/court/:id/charge', checkCsrf, need('courtsit'), wrap((req, res) => {
+    try {
+      const m = Ct.charge(req.params.id, { articles: req.body.articles }, req.user);
+      req.session.flash = { text: (m.articles || []).length
+        ? 'Charged under ' + m.articles.map(a => 'Article ' + a).join(', ') + '.'
+        : 'The charge is dropped. No article stands against this matter.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/court/' + req.params.id);
+  }));
+
   app.post('/court/:id/judge', checkCsrf, need('courtsit'), wrap((req, res) => {
     try {
-      Ct.judge(req.params.id, req.body, req.user);
-      req.session.flash = { text: 'The court has spoken.' };
+      const m = Ct.judge(req.params.id, req.body, req.user);
+      req.session.flash = { text: 'The court has spoken.' + (m.fine ? ' A fine of ' + V.septims(m.fine) + ' septims is entered into the Treasury.' : '') };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/court/' + req.params.id);
   }));

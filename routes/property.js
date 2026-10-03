@@ -32,8 +32,11 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
     const u = req.user;
     const q = String(req.query.q || '');
     const sel = String(req.query.p || '');
-    const rows = P.search(q);
-    const all = P.all();
+    const mapId = P.MAP_BY_ID[req.query.map] ? String(req.query.map) : 'county';
+    const theMap = P.MAP_BY_ID[mapId];
+    const rows = P.search(q, mapId);
+    const all = P.all(mapId);
+    const counts = P.countByMap();
     const sum = P.summary();
     const chosen = sel ? P.get(sel) : null;
     const mayEnter = O.can(u, 'propenter');
@@ -42,13 +45,18 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
 <section class="card">
   <h2>The Property Roll</h2>
   <p class="lede">Every holding in the County, pinned where it stands. ${mayEnter ? 'Press <b>Enter a holding</b>, then click the map where it lies.' : 'Click a pin to read what is held there.'}</p>
+  <div class="btnrow" style="margin-bottom:4px">
+    ${P.MAPS.map(m => `<a class="btn ${m.id === mapId ? '' : 'ghost'}" href="/property?map=${esc(m.id)}${q ? '&q=' + encodeURIComponent(q) : ''}">${esc(m.name)} <span style="opacity:.7">\u00b7 ${counts[m.id] || 0}</span></a>`).join('')}
+  </div>
+  <p class="hint" style="margin:0 0 12px">${esc(theMap.note)}</p>
   <div class="btnrow">
     ${mayEnter ? `<button class="btn go" type="button" id="startplace">Enter a holding</button>` : ''}
     <form method="get" action="/property" class="inline" style="display:flex;gap:8px;align-items:center">
+      <input type="hidden" name="map" value="${esc(mapId)}">
       <input type="text" name="q" value="${esc(q)}" placeholder="Search name, holder or place" style="width:260px">
       <button class="btn ghost" type="submit">Search</button>
     </form>
-    ${q ? `<a class="btn ghost small" href="/property">Clear</a>` : ''}
+    ${q ? `<a class="btn ghost small" href="/property?map=${esc(mapId)}">Clear</a>` : ''}
   </div>
 </section>
 
@@ -60,7 +68,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
 
 <section class="card" style="margin-top:20px">
   <div class="mapwrap" id="map" data-place="${mayEnter ? '1' : ''}">
-    <img src="/county-map.png" alt="A map of the County of Bruma" id="mapimg">
+    <img src="${esc(theMap.file)}" alt="A map of ${esc(theMap.name)}" id="mapimg">
     ${all.map(p => pin(p, p.id === sel)).join('')}
   </div>
   <p class="mapnote" id="mapnote">${mayEnter ? 'Click a pin to read it. Press <b>Enter a holding</b> above to set a new pin.' : 'Click a pin to read what is held there.'}</p>
@@ -72,7 +80,7 @@ ${chosen ? holdingCard(chosen, u, req.session.csrf) : ''}
   <h3 style="margin-top:0">${q ? 'Holdings matching “' + esc(q) + '”' : 'The roll'}</h3>
   ${rows.length ? V.table([
       { head: 'No.', num: true, cell: r => r.no },
-      { head: 'Holding', cell: r => `<a href="/property?p=${esc(r.id)}${q ? '&q=' + encodeURIComponent(q) : ''}#map">${esc(r.name)}</a>` },
+      { head: 'Holding', cell: r => `<a href="/property?map=${esc(mapId)}&p=${esc(r.id)}${q ? '&q=' + encodeURIComponent(q) : ''}#map">${esc(r.name)}</a>` },
       { head: 'Kind', cell: r => esc(P.kindName(r.kind)) },
       { head: 'Where', cell: r => esc(r.place || '') },
       { head: 'Held by', cell: r => esc(r.holder || '—') },
@@ -85,6 +93,7 @@ ${mayEnter ? `<section class="card" id="enterform" style="display:none">
   <h3 style="margin-top:0">Enter a holding</h3>
   <form method="post" action="/property/enter">${V.hidden(req.session.csrf)}
     <input type="hidden" name="x" id="newx"><input type="hidden" name="y" id="newy">
+    <input type="hidden" name="map" value="${esc(mapId)}">
     <p class="hint" id="atwhere"></p>
     ${holdingFields({}, req.session.csrf)}
     <div class="btnrow"><button class="btn" type="submit">Enter it on the roll</button>
@@ -99,7 +108,7 @@ ${mayEnter ? `<section class="card" id="enterform" style="display:none">
     try {
       const row = P.enter(req.body, req.user);
       req.session.flash = { text: row.name + ' is entered on the roll as holding no. ' + row.no + '.' };
-      res.redirect('/property?p=' + encodeURIComponent(row.id) + '#map');
+      res.redirect('/property?map=' + encodeURIComponent(row.map) + '&p=' + encodeURIComponent(row.id) + '#map');
     } catch (e) {
       req.session.flash = { err: true, text: e.message };
       res.redirect('/property');
@@ -120,7 +129,7 @@ ${mayEnter ? `<section class="card" id="enterform" style="display:none">
       <div><label for="y">Down the map (0–100)</label><input id="y" name="y" type="number" step="0.01" min="0" max="100" value="${p.y}"></div>
     </div>
     <div class="btnrow"><button class="btn" type="submit">Amend</button>
-    <a class="btn ghost" href="/property?p=${esc(p.id)}#map">Back to the roll</a></div>
+    <a class="btn ghost" href="/property?map=${esc(p.map || 'county')}&p=${esc(p.id)}#map">Back to the roll</a></div>
   </form>
 </section>
 
@@ -136,9 +145,9 @@ ${O.can(req.user, 'propstrike') ? `<section class="card">
 
   app.post('/property/:id/amend', checkCsrf, need('propenter'), wrap((req, res) => {
     try {
-      P.amend(req.params.id, req.body, req.user);
+      const row = P.amend(req.params.id, req.body, req.user);
       req.session.flash = { text: 'The holding is amended.' };
-      res.redirect('/property?p=' + encodeURIComponent(req.params.id) + '#map');
+      res.redirect('/property?map=' + encodeURIComponent(row.map) + '&p=' + encodeURIComponent(req.params.id) + '#map');
     } catch (e) {
       req.session.flash = { err: true, text: e.message };
       res.redirect('/property');
@@ -156,7 +165,8 @@ ${O.can(req.user, 'propstrike') ? `<section class="card">
       const r = P.recordRent(req.params.id, req.body, req.user);
       req.session.flash = { text: V.septims(r.amount) + ' septims rendered on ' + r.propName + '.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
-    res.redirect('/property?p=' + encodeURIComponent(req.params.id) + '#map');
+    const h = P.get(req.params.id);
+    res.redirect('/property?map=' + encodeURIComponent((h && h.map) || 'county') + '&p=' + encodeURIComponent(req.params.id) + '#map');
   }));
 };
 
@@ -198,7 +208,7 @@ function holdingCard(p, u, csrf) {
   ${p.note ? `<p>${esc(p.note)}</p>` : ''}
   <div class="btnrow">
     ${O.can(u, 'propenter') ? `<a class="btn ghost small" href="/property/${esc(p.id)}/amend">Amend</a>` : ''}
-    <a class="btn ghost small" href="/property">Close</a>
+    <a class="btn ghost small" href="/property?map=${esc(p.map || 'county')}">Close</a>
   </div>
 
   ${O.can(u, 'propdeed') ? `<h3>Record a rent rendered</h3>

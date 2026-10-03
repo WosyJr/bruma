@@ -127,3 +127,78 @@
 
   Array.prototype.forEach.call(numbers, function (n) { watcher.observe(n); });
 })();
+
+(function () {
+  var buttons = document.querySelectorAll('[data-picture]');
+  if (!buttons.length) return;
+  var loading = null;
+
+  function library() {
+    if (window.html2canvas) return Promise.resolve(window.html2canvas);
+    if (loading) return loading;
+    loading = new Promise(function (ok, no) {
+      var s = document.createElement('script');
+      s.src = '/html2canvas.min.js?v=1';
+      s.onload = function () { window.html2canvas ? ok(window.html2canvas) : no(new Error('not loaded')); };
+      s.onerror = function () { no(new Error('could not be fetched')); };
+      document.head.appendChild(s);
+    });
+    return loading;
+  }
+
+  function flatten(doc) {
+    var all = doc.querySelectorAll('*');
+    Array.prototype.forEach.call(all, function (el) {
+      var cs = doc.defaultView.getComputedStyle(el);
+      if (/gradient/i.test(cs.backgroundImage)) el.style.backgroundImage = 'none';
+      if (cs.boxShadow && cs.boxShadow !== 'none') el.style.boxShadow = 'none';
+      if (cs.backgroundClip === 'text' || cs.webkitBackgroundClip === 'text') {
+        el.style.webkitBackgroundClip = 'border-box';
+        el.style.backgroundClip = 'border-box';
+        el.style.color = '#F7EEDC';
+      }
+      el.style.animation = 'none';
+      el.style.transition = 'none';
+    });
+    Array.prototype.forEach.call(doc.querySelectorAll('[data-nopicture]'), function (el) { el.remove(); });
+  }
+
+  Array.prototype.forEach.call(buttons, function (b) {
+    b.addEventListener('click', function () {
+      var target = document.querySelector(b.getAttribute('data-picture'));
+      if (!target) return;
+      var name = (b.getAttribute('data-picture-name') || 'bruma') + '.png';
+      var was = b.textContent;
+      b.textContent = 'Drawing…';
+      b.disabled = true;
+
+      library().then(function (h2c) {
+        return h2c(target, {
+          backgroundColor: '#17110C',
+          scale: Math.min(2, window.devicePixelRatio || 1) * 1.5,
+          logging: false,
+          useCORS: true,
+          onclone: function (doc) { flatten(doc); }
+        });
+      }).then(function (canvas) {
+        return new Promise(function (ok) { canvas.toBlob(ok, 'image/png'); });
+      }).then(function (blob) {
+        if (!blob) throw new Error('nothing was drawn');
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        b.textContent = 'Saved';
+        setTimeout(function () { b.textContent = was; b.disabled = false; }, 1600);
+      }).catch(function (e) {
+        b.textContent = 'It would not draw';
+        b.title = String(e && e.message ? e.message : e);
+        setTimeout(function () { b.textContent = was; b.disabled = false; }, 2600);
+      });
+    });
+  });
+})();

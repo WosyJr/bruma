@@ -8,6 +8,8 @@ const Ct = require('../lib/court');
 const A = require('../lib/archive');
 const G = require('../lib/guilds');
 const Pr = require('../lib/proclaim');
+const Desk = require('../lib/desk');
+const Tax = require('../lib/taxes');
 
 const esc = V.esc;
 
@@ -45,7 +47,7 @@ module.exports = function (app, { checkCsrf, wrap, back }) {
     <div class="v" style="font-size:24px;line-height:1.35">${esc(passState.name)}</div>
     <div class="n">${pass.looked ? 'last looked ' + esc(V.when(pass.looked)) : 'no word yet'} · <a href="/pass">the notice</a></div></div>
   <div class="stat"><div class="k">Holdings on the roll</div><div class="v">${prop.total}</div>
-    <div class="n">${prop.byState.vacant || 0} standing vacant · <a href="/holdings">who holds what</a></div></div>
+    <div class="n">${prop.byState.vacant || 0} standing vacant · <a href="/holdings">the property roll</a></div></div>
   <div class="stat"><div class="k">Judgments given</div><div class="v">${judged}</div>
     <div class="n">posted by the court · <a href="/judgments">read them</a></div></div>
 </div>
@@ -66,7 +68,7 @@ ${word ? `<section class="card" style="margin-top:20px">
     <a href="/pass"><h3>The Pale Pass</h3><p>Whether the road north may be travelled, on what footing, and what the watch saw on it last.</p></a>
     <a href="/laws"><h3>Laws &amp; Charters</h3><p>The Lex Brumae, the legal code of the County, title by title. The law is not kept behind a door.</p></a>
     <a href="/the-guilds"><h3>The Guilds</h3><p>The three bodies that hold charter, what each may do, and whose hand the County deals with.</p></a>
-    <a href="/holdings"><h3>Who Holds What</h3><p>The holdings of Bruma and who is seized of them.</p></a>
+    <a href="/holdings"><h3>Property</h3><p>The holdings of Bruma and who is seized of them.</p></a>
     <a href="/judgments"><h3>Judgments</h3><p>What the court has decided, once it has decided it.</p></a>
     <a href="/who"><h3>The Court</h3><p>The offices of the County and who holds them. Any of them may be written to.</p></a>
     <a href="/petition"><h3>Lay a Petition</h3><p>Anyone under the County’s protection may lay a matter before it, with no account and no leave asked.</p></a>
@@ -93,11 +95,31 @@ ${word ? `<section class="card" style="margin-top:20px">
     const myCourt = Ct.mine(u.username).filter(m => m.stage !== 'judged' && m.stage !== 'withdrawn');
     const treas = O.can(u, 'treasread') ? T.summary() : null;
     const halls = V.navFor(u).filter(h => h.id !== 'hall');
+    const desk = Desk.gather(u);
+    const tax = O.can(u, 'treasread') ? Tax.summary() : null;
+
+    const deskRows = desk.groups.map(g => `<div style="margin-top:18px">
+    <div class="eyebrow" style="margin-bottom:6px">${esc(g.head)}</div>
+    <div class="rows" style="margin:0">${g.items.map(i => `<div class="row"${i.urgent ? ' style="border-left:2px solid var(--accent);padding-left:12px;margin-left:-14px"' : ''}>
+      <div class="main"><a href="${esc(i.link)}" style="font-family:var(--serif);font-size:18px">${esc(i.text)}</a>${i.note ? `<div class="hint">${esc(i.note)}</div>` : ''}</div>
+      ${i.urgent ? '<div class="side"><span class="tag out">pressing</span></div>' : ''}
+    </div>`).join('')}</div>
+  </div>`).join('');
 
     const body = `
 <section class="card">
   <h2>Good day, ${esc(u.name)}</h2>
   <p class="lede">${esc(u.title)}${u.all ? ' · every door in the County stands open to you' : ''}</p>
+</section>
+
+<section class="card">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap">
+    <h3 style="margin:0">Your desk</h3>
+    <span class="hint" style="margin:0">${desk.count
+      ? desk.count + (desk.count === 1 ? ' thing wants your hand' : ' things want your hand') + (desk.urgent ? ' · ' + desk.urgent + ' pressing' : '')
+      : 'Nothing waits upon you.'}</span>
+  </div>
+  ${deskRows || '<p class="lede" style="margin-top:14px">The desk is clear. Nothing in the County is waiting on you.</p>'}
 </section>
 
 ${O.can(u, 'watchclock') ? `<section class="card">
@@ -128,6 +150,13 @@ ${O.can(u, 'watchclock') ? `<section class="card">
     <div class="big">${V.septims(treas.balance)}<span style="font-size:15px;color:var(--faded)"> septims</span></div>
     <p class="hint">This month: ${V.septims(treas.monthIn)} in, ${V.septims(treas.monthOut)} out.</p>
     <p style="margin:10px 0 0"><a href="/treasury">Open the ledger</a></p>
+  </section>` : ''}
+
+  ${tax && tax.arrears ? `<section class="card tight">
+    <div class="k" style="font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faded)">In arrears</div>
+    <div class="big">${V.septims(tax.arrears)}<span style="font-size:15px;color:var(--faded)"> septims</span></div>
+    <p class="hint">${tax.owing} ${tax.owing === 1 ? 'assessment unrendered' : 'assessments unrendered'}.</p>
+    <p style="margin:10px 0 0"><a href="/taxes">Open the tax roll</a></p>
   </section>` : ''}
 
   <section class="card tight">
