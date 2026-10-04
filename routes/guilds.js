@@ -95,6 +95,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     const duties = Lad.duties(g.id);
     const rend = Lad.renders(g.id);
     const open = G.openContracts(g.id);
+    const struck = G.struckRoll(g.id);
     const taken = G.contracts(g.id).filter(c => c.state === 'taken').slice(0, 8);
 
     const mayKeep = O.can(u, 'guildsee') || (O.can(u, 'guildown') && O.guildOf(u) === g.id);
@@ -215,10 +216,40 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
   <aside>
     <section class="card tight">
       <div class="eyebrow" style="margin-bottom:10px">The roll</div>
-      ${roll.length ? `<div class="rollrows">${roll.map(m => `<div class="rr">
+      ${roll.length ? `<div class="rollrows">${roll.map(m => mayKeep ? `<details class="rmem">
+        <summary>
+          <span class="rrn"><b>${esc(m.name)}</b><i>${esc(m.rankName)}${m.trade ? ' · ' + esc(m.trade) : ''}</i></span>
+          <span class="tag ${(G.STANDING_BY_ID[m.standing] || {}).tag || ''}">${esc(G.standingName(m.standing))}</span>
+        </summary>
+        <form method="post" action="/guilds/${esc(g.id)}/members/${esc(m.id)}">${V.hidden(req.session.csrf)}
+          <label><span>Rank</span><select name="rank">${ladder.map(r =>
+            `<option value="${r.id}"${r.id === m.rank ? ' selected' : ''}>${esc(r.letter)} — ${esc(r.name)}</option>`).join('')}</select></label>
+          <label><span>Standing</span><select name="standing">${G.STANDINGS.map(x =>
+            `<option value="${x.id}"${x.id === m.standing ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
+          <label><span>Trade</span><input name="trade" type="text" maxlength="100" value="${esc(m.trade)}"></label>
+          <div class="btnrow"><button class="btn small" type="submit">Set it down</button></div>
+        </form>
+        <form method="post" action="/guilds/${esc(g.id)}/members/${esc(m.id)}/strike" class="strikerow">${V.hidden(req.session.csrf)}
+          <button class="btn danger small" type="submit">Strike from the roll</button>
+          <span class="hint">They come off the roll. The record is kept and can be put back.</span>
+        </form>
+      </details>` : `<div class="rr">
         <div class="rrn"><b>${esc(m.name)}</b><i>${esc(m.rankName)}${m.trade ? ' · ' + esc(m.trade) : ''}</i></div>
         <span class="tag ${(G.STANDING_BY_ID[m.standing] || {}).tag || ''}">${esc(G.standingName(m.standing))}</span>
       </div>`).join('')}</div>` : V.empty('Nobody stands on this roll.')}
+      ${mayKeep && struck.length ? `<details class="fold" style="margin-top:14px">
+        <summary>Struck from the roll · ${struck.length}</summary>
+        <div class="rollrows" style="margin-top:12px">${struck.map(m => `<div class="rr">
+          <div class="rrn"><b>${esc(m.name)}</b><i>${esc(m.rankName)}${
+            m.amended ? ' · struck by ' + esc(m.amended.by) : ''}</i></div>
+          <span class="strikebtns">
+            <form method="post" action="/guilds/${esc(g.id)}/members/${esc(m.id)}" class="inline">${V.hidden(req.session.csrf)}
+              <input type="hidden" name="struck" value=""><button class="btn ghost small" type="submit">Put back</button></form>
+            ${mayCharter ? `<form method="post" action="/guilds/${esc(g.id)}/members/${esc(m.id)}/remove" class="inline">${V.hidden(req.session.csrf)}
+              <button class="btn ghost small" type="submit">Erase</button></form>` : ''}
+          </span>
+        </div>`).join('')}</div>
+      </details>` : ''}
       ${mayKeep ? `<details class="fold" style="margin-top:14px">
         <summary>Admit someone</summary>
         <form method="post" action="/guilds/${esc(g.id)}/admit">${V.hidden(req.session.csrf)}
@@ -312,8 +343,29 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
   app.post('/guilds/:id/members/:mid', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
     try {
       if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
-      G.amendMember(req.params.mid, req.body, req.user);
-      req.session.flash = { text: 'The roll is amended.' };
+      const patch = Object.assign({}, req.body);
+      const putBack = patch.struck !== undefined && !patch.struck;
+      if (patch.struck !== undefined) patch.struck = !!patch.struck;
+      const m = G.amendMember(req.params.mid, patch, req.user);
+      req.session.flash = { text: putBack ? m.name + ' is back upon the roll.' : 'The roll is amended.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/guilds/' + req.params.id);
+  }));
+
+  app.post('/guilds/:id/members/:mid/strike', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+    try {
+      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
+      const m = G.amendMember(req.params.mid, { struck: true }, req.user);
+      req.session.flash = { text: m.name + ' is struck from the roll. The record is kept.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/guilds/' + req.params.id);
+  }));
+
+  app.post('/guilds/:id/members/:mid/remove', checkCsrf, need('guildcharter'), wrap((req, res) => {
+    try {
+      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
+      const m = G.removeMember(req.params.mid);
+      req.session.flash = { text: m.name + ' is erased from the book entirely.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/guilds/' + req.params.id);
   }));
