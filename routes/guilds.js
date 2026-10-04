@@ -12,32 +12,71 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
   app.get('/guilds', needAny('guildsee', 'guildown'), (req, res) => {
     const u = req.user;
     const mine = O.guildOf(u);
+    const feed = G.recent(8);
+
+    const hallCard = g => {
+      const may = O.maySeeGuild(u, g.id);
+      const s = G.hallSummary(g.id);
+      const h = Lad.hall(g.id);
+      const charter = G.charterFor(g.id);
+      const wants = !s.steward;
+      return `<article class="hallcard${may ? '' : ' shut'}${wants ? ' wants' : ''}">
+      <div class="hcchip"><span class="tag ${wants ? 'gold' : charter ? 'in' : 'out'}">${wants ? 'Steward wanted' : charter ? 'Chartered' : 'No charter'}</span></div>
+      <h3>${esc(g.name)}</h3>
+      <div class="hcseat">${esc(h.hall)} · ${esc(h.seat)}</div>
+      <p class="hcblurb">${esc(h.blurb)}${h.under ? ' ' + esc(h.under.charAt(0).toUpperCase() + h.under.slice(1)) + '.' : ''}</p>
+      <div class="hcstats">
+        <div><span class="hck">Steward</span><span class="hcv${wants ? ' vacant' : ''}">${esc(s.steward || 'seat vacant')}</span></div>
+        <div><span class="hck">On the roll</span><span class="hcv">${s.onRoll}</span></div>
+        <div><span class="hck">Contracts open</span><span class="hcv">${s.contractsOpen}</span></div>
+      </div>
+      <div class="hcbtns">
+        ${may
+          ? `<a class="btn go" href="/guilds/${esc(g.id)}">Enter the hall</a>
+             <a class="btn ghost" href="/guilds/${esc(g.id)}#charter">Read the charter</a>`
+          : `<span class="btn ghost" aria-disabled="true" style="opacity:.5">Not your hall</span>
+             <a class="btn ghost" href="/the-guilds">Read the charter</a>`}
+      </div>
+      ${mine === g.id ? '<div class="hcyours">Yours</div>' : ''}
+    </article>`;
+    };
 
     const body = `
-<section class="card">
-  <h2>The Guilds of Bruma</h2>
-  <p class="lede">Four bodies hold charter in the County. Each keeps its own hall, its own ladder of ranks, and
-  cuts its own contracts with the citizens of Bruma.</p>
+<section class="card hallhead">
+  <div class="eyebrow">Chartered under the Guilds Act</div>
+  <h2 style="margin:4px 0 8px">The Guilds of Bruma</h2>
+  <p class="lede" style="margin:0;max-width:640px">Four halls hold charters in this county. Each keeps its own roll,
+  its own ranks and its own contracts. Sign in with your guild to see yours; the county sees only what the charter
+  says it may.</p>
 </section>
 
-<div class="guildgrid">
-  ${O.GUILDS.map(g => {
-    const may = O.maySeeGuild(u, g.id);
-    const s = G.hallSummary(g.id);
-    const charter = G.charterFor(g.id);
-    return `<a class="guildtile${may ? '' : ' shut'}" href="${may ? '/guilds/' + g.id : '#'}"${may ? '' : ' aria-disabled="true"'}>
-      <div class="eyebrow">${esc(Lad.section(g.id))}</div>
-      <h3>${esc(g.name)}</h3>
-      <p>${esc(Lad.lede(g.id))}</p>
-      <div class="gtfoot">
-        <span>${s.onRoll} on the roll</span>
-        <span>${s.contractsOpen} ${s.contractsOpen === 1 ? 'contract' : 'contracts'} open</span>
-        <span>${charter ? 'Chartered' : 'No charter laid'}</span>
-        ${mine === g.id ? '<span class="yours">Yours</span>' : ''}
-      </div>
-      ${may ? '' : '<p class="hint">Not open to your office.</p>'}
-    </a>`;
-  }).join('')}
+<div class="hallgrid">${O.GUILDS.map(hallCard).join('')}</div>
+
+<div class="hallcols" style="margin-top:22px">
+  <div>
+    <section class="card">
+      <div class="eyebrow" style="margin-bottom:6px">Signing in</div>
+      <h3 style="margin:0 0 12px;font-size:23px">One name, whichever halls you hold</h3>
+      <p class="lede" style="margin:0 0 18px">You sign in once as yourself. What you then see is decided by the rolls:
+      a ${esc(Lad.ladder('miners')[2].name)} of the Miners sees the Miners’ contracts, a Steward sees the whole hall,
+      and the Countess sees every roll in the county.</p>
+      <ul class="rulelist">
+        <li>Belong to more than one guild — the halls simply both appear.</li>
+        <li>A Steward promotes from the roll, and the rank changes what opens.</li>
+        <li>Expelled under the charter, and the hall closes the same hour.</li>
+      </ul>
+      ${O.can(u, 'officers') ? '<div class="btnrow" style="margin-top:18px"><a class="btn go" href="/officers">Put someone on the rolls</a></div>' : ''}
+    </section>
+  </div>
+  <aside>
+    <section class="card tight">
+      <div class="eyebrow" style="margin-bottom:12px">Lately on the rolls</div>
+      ${feed.length ? `<div class="feed">${feed.map(f => `<div class="fd">
+        <b>${esc(f.text)}</b>
+        <i>${esc(V.inworld(f.at))} · ${esc(f.guildName)}</i>
+      </div>`).join('')}</div>` : V.empty('Nothing has moved on the rolls yet.')}
+    </section>
+  </aside>
 </div>`;
     res.page({ title: 'The Guilds', body, active: 'guilds', wide: true });
   });

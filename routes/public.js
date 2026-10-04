@@ -17,22 +17,49 @@ const esc = V.esc;
 module.exports = function (app, { checkCsrf, wrap, back }) {
 
   app.get('/', (req, res) => {
-    const prop = P.summary();
     const pass = Pr.pass();
     const passState = Pr.STATE_BY_ID[pass.state] || Pr.STATES[0];
     const word = Pr.latest();
-    const judged = Ct.all().filter(m => m.stage === 'judged' && m.judgment).length;
+    const later = Pr.all().slice(word ? 1 : 0, (word ? 1 : 0) + 4);
+    const seat = U.list().filter(x => x.active).map(x => ({ p: x, o: O.get(x.office) }))
+      .filter(x => x.o && x.o.all && x.o.id !== 'master')
+      .sort((a, b) => (a.o.rank || 9) - (b.o.rank || 9))[0]
+      || U.list().filter(x => x.active).map(x => ({ p: x, o: O.get(x.office) }))
+        .filter(x => x.o && x.o.all).sort((a, b) => (a.o.rank || 9) - (b.o.rank || 9))[0];
+    const seatName = seat ? seat.p.name : '';
+    const seatStyle = seat ? (seat.p.style || seat.o.name) : 'The County of Bruma';
+    const seatWords = seat ? (seat.p.style + ' ' + seat.o.name) : '';
+    const title = /countess/i.test(seatWords) ? 'Countess' : /\bcount\b/i.test(seatWords) ? 'Count'
+      : /steward/i.test(seatWords) ? 'Steward' : '';
+    const whose = title ? 'the ' + title : 'the County';
+    const possessive = title ? 'the ' + title + '\u2019s' : 'the County\u2019s';
+
+    const icon = d => `<svg class="gicon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+    const HOUSE = icon('<path d="M4 10.5 12 4l8 6.5"/><path d="M5.6 9.9V20h12.8V9.9"/>');
+    const PEAK = icon('<path d="m3 18 5.4-9 3.3 5.4L14.4 10 21 18Z"/>');
+    const PURSE = icon('<path d="M4.6 9h14.8l-1 11H5.6Z"/><path d="M9 9V6.8a3 3 0 0 1 6 0V9"/>');
+
+    const doors = [
+      { icon: HOUSE, name: 'An Audience',
+        text: (title ? 'The ' + title : 'The County') + ' hears petitioners in the great hall on the first and third day of each week. Come without appointment; come sober.',
+        link: '/petition', cta: 'Ask to be heard' },
+      { icon: PEAK, name: 'The Pale Pass',
+        text: 'The road to Skyrim, and whether it is open. Snow, tolls, escorts, and what the watch has seen on the high road this week.',
+        link: '/pass', cta: 'Road and weather' },
+      { icon: PURSE, name: 'Market & Charter',
+        text: 'Stall rights, trade charters, and the county’s grants of land. What is held, by whom, and on what terms.',
+        link: '/holdings', cta: 'See the rolls' }
+    ];
 
     const body = `
 <section class="hero">
   <div class="heroin">
-    <div class="eyebrow">The County Seat · Jerall Mountains</div>
     <h2>The County of Bruma</h2>
     <p class="lede">Northernmost county of Cyrodiil. Keeper of the Pale Pass, and the last warm hall before Skyrim.</p>
     <div class="btnrow">
-      ${req.user
-        ? `<a class="btn" href="/hall">Into the Great Hall</a><a class="btn ghost" href="/court">Who sits at court</a>`
-        : `<a class="btn" href="/proclamations">Read the County’s word</a><a class="btn ghost" href="/login">Enter the Hall</a>`}
+      <a class="btn go" href="/proclamations">Read the ${esc(seat && /countess/i.test(seatStyle) ? 'Countess’s' : 'County’s')} word</a>
+      <a class="btn ghost" href="/who">Who sits at court</a>
     </div>
   </div>
 </section>
@@ -43,43 +70,74 @@ module.exports = function (app, { checkCsrf, wrap, back }) {
   <div class="line"></div>
 </div>
 
-<div class="grid three" style="margin-top:28px">
-  <div class="stat"><div class="k">The Pale Pass</div>
-    <div class="v" style="font-size:24px;line-height:1.35">${esc(passState.name)}</div>
-    <div class="n">${pass.looked ? 'last looked ' + esc(V.when(pass.looked)) : 'no word yet'} · <a href="/pass">the notice</a></div></div>
-  <div class="stat"><div class="k">Holdings on the roll</div><div class="v">${prop.total}</div>
-    <div class="n">${prop.byState.vacant || 0} standing vacant · <a href="/holdings">the property roll</a></div></div>
-  <div class="stat"><div class="k">Judgments given</div><div class="v">${judged}</div>
-    <div class="n">posted by the court · <a href="/judgments">read them</a></div></div>
+<div class="doors">
+  ${doors.map(d => `<a class="door" href="${d.link}">
+    ${d.icon}
+    <h3>${esc(d.name)}</h3>
+    <p>${esc(d.text)}</p>
+    <span class="dcta">${esc(d.cta)} →</span>
+  </a>`).join('')}
 </div>
 
-${word ? `<section class="card" style="margin-top:20px">
-  <div class="eyebrow" style="margin-bottom:12px">The latest word of the County</div>
-  <h3 style="margin-top:0;font-size:27px">${esc(word.title)}</h3>
-  <p class="hint" style="margin:0 0 14px">${esc(word.hand)}${word.dated ? ' · ' + esc(word.dated) : ''}</p>
-  <p style="color:var(--muted);line-height:1.7">${esc(word.text.slice(0, 340))}${word.text.length > 340 ? '…' : ''}</p>
-  <div class="btnrow"><a class="btn ghost" href="/proclamations/${esc(word.id)}">Read it in full</a>
-  <a class="btn ghost" href="/proclamations">All proclamations</a></div>
-</section>` : ''}
+<div class="hallcols" style="margin-top:34px">
+  <div>
+    <section class="card wordcard">
+      <div class="eyebrow" style="margin-bottom:8px">The word of ${esc(whose)}</div>
+      ${word ? `<h2 class="wordtitle">${esc(word.title)}</h2>
+      <div class="wordbody">${word.text.split(/\n{2,}/).slice(0, 3).map(para =>
+        `<p>${esc(para.length > 420 ? para.slice(0, 420) + '…' : para)}</p>`).join('')}</div>
+      <div class="sigline">
+        <span class="sigseal"><svg viewBox="0 0 34 34" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
+          <circle cx="17" cy="17" r="13"/><circle cx="17" cy="17" r="8.4"/>
+          <path d="M17 9.6c2.3 3 3.8 4.6 3.8 6.8a3.8 3.8 0 0 1-7.6 0c0-2.2 1.5-3.8 3.8-6.8Z" fill="currentColor" stroke="none"/>
+        </svg></span>
+        <span class="signames"><b>${esc(word.hand || seatStyle + (seatName ? ' ' + seatName : ''))}</b>
+        <i>Given at Castle Bruma${word.dated ? ', ' + esc(word.dated) : ''}</i></span>
+      </div>
+      <div class="btnrow" style="margin-top:20px"><a class="btn ghost" href="/proclamations/${esc(word.id)}">Read it in full</a>
+      <a class="btn ghost" href="/proclamations">All proclamations</a></div>`
+      : `<h2 class="wordtitle">Nothing is proclaimed</h2>
+         <div class="wordbody"><p>The County has posted no word yet. When it does, it is posted here and on the
+         door of the Great Hall at the same hour.</p></div>`}
+    </section>
+  </div>
+  <aside>
+    <section class="card tight">
+      <div class="eyebrow" style="margin-bottom:12px">Lately proclaimed</div>
+      ${later.length ? `<ul class="procl">${later.map(p => `<li>
+        <a href="/proclamations/${esc(p.id)}">${esc(p.title)}</a>
+        <span>${esc(p.dated || V.inworld(p.at))}</span>
+      </li>`).join('')}</ul>`
+      : V.empty('Nothing else has been proclaimed.')}
+      <div class="btnrow" style="margin-top:14px"><a class="btn ghost small" href="/proclamations">All of them</a></div>
+    </section>
 
-<section class="card" style="margin-top:20px">
-  <h3 style="margin-top:0">Open to anyone</h3>
+    <section class="card tight passcard" data-pass="${esc(passState.id)}">
+      <div class="eyebrow" style="margin-bottom:8px">The Pale Pass</div>
+      <div class="pcstate">${esc(passState.name)}</div>
+      <div class="pcnote">${pass.note ? esc(pass.note) : esc(passState.say)}</div>
+      <div class="btnrow" style="margin-top:12px"><a class="btn ghost small" href="/pass">The notice</a></div>
+    </section>
+  </aside>
+</div>
+
+<section class="card" style="margin-top:22px">
+  <div class="eyebrow" style="margin-bottom:6px">The Court of Bruma</div>
+  <h3 style="margin:0 0 14px;font-size:23px">What is open to anyone</h3>
   <div class="choose">
     <a href="/proclamations"><h3>Proclamations</h3><p>The word of the County as it is given, posted here as it is posted on the door of the Great Hall.</p></a>
-    <a href="/pass"><h3>The Pale Pass</h3><p>Whether the road north may be travelled, on what footing, and what the watch saw on it last.</p></a>
     <a href="/laws"><h3>Laws &amp; Charters</h3><p>The Lex Brumae, the legal code of the County, title by title. The law is not kept behind a door.</p></a>
-    <a href="/the-guilds"><h3>The Guilds</h3><p>The three bodies that hold charter, what each may do, and whose hand the County deals with.</p></a>
-    <a href="/holdings"><h3>Property</h3><p>The holdings of Bruma and who is seized of them.</p></a>
+    <a href="/the-guilds"><h3>The Guilds</h3><p>The four halls that hold charter, what each may do, and whose hand the County deals with.</p></a>
     <a href="/judgments"><h3>Judgments</h3><p>What the court has decided, once it has decided it.</p></a>
-    <a href="/who"><h3>The Court</h3><p>The offices of the County and who holds them. Any of them may be written to.</p></a>
-    <a href="/petition"><h3>Lay a Petition</h3><p>Anyone under the County’s protection may lay a matter before it, with no account and no leave asked.</p></a>
+    <a href="/petitions"><h3>Petitions</h3><p>What the County has been asked, and what it said back. Every petition is answered.</p></a>
+    <a href="/verify"><h3>Check a Paper</h3><p>Every writ, deed and licence carries a number. Give it here and be told whether the paper is genuine.</p></a>
   </div>
 </section>
 
 <section class="card">
   <h3 style="margin-top:0">Behind the hall door</h3>
-  <p class="lede">The watch and its hours, the treasury, the guild rolls and the matters still before the bench
-  are kept for those who hold office in the County. What happens in Bruma is found out in Bruma.</p>
+  <p class="lede">The watch and its hours, the treasury, the gaol, the guild rolls and the matters still before the
+  bench are kept for those who hold office in the County. What happens in Bruma is found out in Bruma.</p>
   ${req.user ? `<p><a class="btn ghost" href="/hall">Into the Great Hall</a></p>`
     : `<p><a class="btn ghost" href="/login">Enter the Hall</a></p>`}
 </section>`;
