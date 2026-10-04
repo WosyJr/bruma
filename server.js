@@ -89,6 +89,11 @@ require('./routes/taxes')(app, ctx);
 require('./routes/reckoner')(app, ctx);
 require('./routes/guilds')(app, ctx);
 require('./routes/court')(app, ctx);
+require('./routes/gaol')(app, ctx);
+require('./routes/petitions')(app, ctx);
+require('./routes/licences')(app, ctx);
+require('./routes/service')(app, ctx);
+require('./routes/verify')(app, ctx);
 require('./routes/archive')(app, ctx);
 require('./routes/admin')(app, ctx);
 

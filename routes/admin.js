@@ -1,4 +1,5 @@
 const V = require('../lib/views');
+const Sv = require('../lib/service');
 const O = require('../lib/offices');
 const U = require('../lib/users');
 
@@ -76,6 +77,8 @@ ${full ? `<section class="card">
     try {
       if (!O.canAppointTo(req.user, req.body.office)) throw new Error('Your office may not appoint to that office.');
       const p = U.create(req.body);
+      Sv.note(p.username, 'sworn', 'Sworn to the County and placed as ' + p.officeName + '.',
+        { name: p.name, office: p.office, officeName: p.officeName }, req.user);
       req.session.flash = { text: p.name + ' is on the rolls as ' + p.officeName + '. Give them the word you set; they must change it when they first enter.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/officers');
@@ -139,13 +142,26 @@ ${full ? `<section class="card">
       return res.say('Not yours to amend', 'That officer does not stand in an office yours may appoint to.', 403);
     }
     try {
-      U.update(req.params.username, {
+      const before = target;
+      const after = U.update(req.params.username, {
         name: req.body.name,
         office: req.body.office,
         style: req.body.style,
         about: req.body.about,
         active: !!req.body.active
       });
+      if (before && before.office !== after.office) {
+        const up = (O.get(after.office) || {}).rank < (O.get(before.office) || {}).rank;
+        Sv.note(after.username, up ? 'raised' : 'moved',
+          'From ' + before.officeName + ' to ' + after.officeName + '.',
+          { name: after.name, office: after.office, officeName: after.officeName }, req.user);
+      }
+      if (before && before.active !== after.active) {
+        Sv.note(after.username, after.active ? 'returned' : 'stood',
+          after.active ? 'Returned to the service of the County.' : 'Stood down from the service of the County.',
+          { name: after.name, office: after.office, officeName: after.officeName }, req.user);
+      }
+      if (before && before.name !== after.name) Sv.renameWho(after.username, after.name);
       req.session.flash = { text: 'The rolls are amended.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/officers/' + encodeURIComponent(req.params.username));

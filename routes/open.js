@@ -1,4 +1,5 @@
 const V = require('../lib/views');
+const Pt = require('../lib/petitions');
 const O = require('../lib/offices');
 const U = require('../lib/users');
 const Pr = require('../lib/proclaim');
@@ -353,56 +354,50 @@ ${O.GUILDS.map(g => {
 <section class="card">
   <h2>Lay a petition before the County</h2>
   <p class="lede">Anyone under the County’s protection may lay a matter before it. Write plainly, say who you are,
-  and say what you want done. It is read.</p>
+  and say what you want done. Every petition is read, and every petition is answered.</p>
   <form method="post" action="/petition">${V.hidden(req.session.csrf)}
     <div class="fields">
-      <div><label for="complainant">Your name</label><input id="complainant" name="complainant" type="text" required></div>
-      <div><label for="title">What the matter is</label><input id="title" name="title" type="text" placeholder="A boundary stone moved on the Orange Road" required></div>
+      <div><label for="name">Your name</label><input id="name" name="name" type="text" maxlength="120" required></div>
+      <div><label for="where">Where you are to be found</label><input id="where" name="where" type="text" maxlength="120" placeholder="The Jerall View Inn"></div>
     </div>
     <div class="fields">
-      <div><label for="kind">Kind</label><select id="kind" name="kind">
-        ${Ct.KINDS.map(k => `<option value="${k.id}"${k.id === 'petition' ? ' selected' : ''}>${esc(k.name)}</option>`).join('')}
+      <div><label for="ask">What you are asking for</label><select id="ask" name="ask">
+        ${Pt.ASKS.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}
       </select></div>
-      <div><label for="respondent">Against whom, if anyone</label><input id="respondent" name="respondent" type="text"></div>
+      <div><label for="against">Against whom, if anyone</label><input id="against" name="against" type="text" maxlength="120"></div>
     </div>
-    <label for="account">Set down what happened</label>
-    <textarea id="account" name="account" style="min-height:160px" required></textarea>
-    <div class="btnrow"><button class="btn" type="submit">Lay it before the County</button></div>
+    <label for="title">In one line, what the matter is</label>
+    <input id="title" name="title" type="text" maxlength="160" placeholder="A boundary stone moved on the Orange Road" required>
+    <label for="about">Set down what happened, and what you want done</label>
+    <textarea id="about" name="about" style="min-height:180px" maxlength="8000" required></textarea>
+    <div class="btnrow"><button class="btn go" type="submit">Lay it before the County</button></div>
   </form>
 </section>
 
 <section class="card">
   <h3 style="margin-top:0">What happens next</h3>
-  <ul class="plain">
-    <li>It goes onto the court roll and is read by the Steward.</li>
-    <li>If it needs a hearing, one is set, and you will be told where and when.</li>
-    <li>Once judged, the judgment is posted among the <a href="/judgments">Judgments of the Court</a>.</li>
-  </ul>
+  <ol class="runs">
+    <li><b>You are given a number</b><span>Keep it. It is how you follow your petition without entering the hall.</span></li>
+    <li><b>It is read</b><span>The Steward reads everything laid before the County.</span></li>
+    <li><b>It is answered</b><span>Granted, refused, or sent to the court — and the answer is posted openly.</span></li>
+  </ol>
+  <p style="margin-top:14px"><a class="btn ghost" href="/petitions">See what the County has answered</a></p>
 </section>`;
     res.page({ title: 'Lay a petition', body, active: 'petition' });
   });
 
   app.post('/petition', checkCsrf, wrap((req, res) => {
-    const who = String(req.body.complainant || '').trim().slice(0, 120);
-    if (!who) {
-      req.session.flash = { err: true, text: 'Say who you are.' };
-      return res.redirect('/petition');
-    }
     try {
-      const hand = { username: 'public:' + who.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40), name: who };
-      const m = Ct.lay({
-        title: req.body.title,
-        kind: req.body.kind,
-        complainant: who,
-        respondent: req.body.respondent,
-        account: req.body.account
-      }, hand);
-      req.session.flash = { text: 'Your petition is laid before the County as matter no. ' + m.no + '. It will be read.' };
-      res.redirect('/petition');
+      const p = Pt.lay(req.body);
+      req.session.flash = {
+        html: 'Your petition is laid before the County as no. ' + p.no + '. Your number is <b>' + esc(p.code)
+          + '</b> — keep it, and you can follow the matter at <a href="/petitions?code=' + esc(p.code) + '">Petitions</a>.'
+      };
+      return res.redirect('/petitions?code=' + encodeURIComponent(p.code));
     } catch (e) {
       req.session.flash = { err: true, text: e.message };
-      res.redirect('/petition');
     }
+    res.redirect('/petition');
   }));
 
   app.get('/holdings', (req, res) => {

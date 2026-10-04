@@ -1,4 +1,5 @@
 const V = require('../lib/views');
+const Sv = require('../lib/service');
 const U = require('../lib/users');
 const O = require('../lib/offices');
 const W = require('../lib/watch');
@@ -220,6 +221,7 @@ ${O.can(u, 'watchclock') ? `<section class="card">
     const u = req.user;
     const me = U.view(u.username);
     const office = O.get(u.office);
+    const svc = Sv.record(u.username, me);
     const opens = u.all
       ? [['Everything', 'The whole County, every hall and every power in it.']]
       : (office ? office.perms.map(p => [O.PERM_NAME[p] || p, '']) : []);
@@ -232,6 +234,20 @@ ${O.can(u, 'watchclock') ? `<section class="card">
     <div class="row"><div class="main">Name upon the rolls</div><div class="side">${esc(u.username)}</div></div>
     <div class="row"><div class="main">Office</div><div class="side">${esc(u.officeName)}</div></div>
     ${me && me.lastLogin ? `<div class="row"><div class="main">Last entered the hall</div><div class="side">${esc(V.when(me.lastLogin))}</div></div>` : ''}
+  </div>
+</section>
+
+<section class="card">
+  <h3 style="margin-top:0">Your service</h3>
+  <div class="tiles">
+    <div class="stat"><div class="k">In service</div><div class="v">${svc.days}</div><div class="n">days</div></div>
+    <div class="stat"><div class="k">Hours on the watch</div><div class="v">${svc.watch.hours}</div><div class="n">${svc.watch.shifts} ${svc.watch.shifts === 1 ? 'shift' : 'shifts'}</div></div>
+    <div class="stat"><div class="k">Commendations</div><div class="v">${svc.commendations}</div><div class="n">upon your record</div></div>
+    <div class="stat"><div class="k">Entries</div><div class="v">${svc.entries.length}</div><div class="n">upon your record</div></div>
+  </div>
+  <div class="btnrow" style="margin-top:16px">
+    <a class="btn ghost" href="/service/${esc(u.username)}">Read your record</a>
+    <a class="btn ghost" href="/service/${esc(u.username)}/certificate" target="_blank" rel="noopener">Your certificate of service \u2197</a>
   </div>
 </section>
 

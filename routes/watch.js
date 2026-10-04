@@ -13,88 +13,148 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     const duty = W.onDuty();
     const week = W.thisWeek();
     const myWeek = week.find(r => r.who === u.username);
-    const recent = (seeAll ? W.log({}) : W.log({ who: u.username })).slice(0, 25);
-    const notes = W.notes().slice(0, 8);
+    const posts = W.postState();
+    const unmanned = posts.filter(p => p.state === 'empty').length;
+    const today = seeAll ? W.stoodToday() : W.stoodToday().filter(s => s.who === u.username);
+    const missed = W.missedThisWeek();
+    const notes = W.notes().slice(0, 6);
+    const high = W.hoursHigh(week);
+    const weekTotal = week.reduce((n, r) => n + r.minutes, 0);
+    const clock = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+    const sameDay = t => new Date(t).toDateString() === new Date().toDateString();
+    const stamp = t => clock(t) + (sameDay(t) ? '' : ' yest.');
+    const partOfDay = t => { const h = new Date(t).getHours();
+      return h < 5 ? 'in the deep of night' : h < 12 ? 'this morning' : h < 18 ? 'this afternoon' : 'this evening'; };
 
     const body = `
-<section class="card">
-  <h2>The Watch</h2>
-  <p class="lede">Bruma stands at the Pale Pass. The watch is kept day and night, and every hour of it is written down.</p>
+<section class="card hallhead">
+  <div class="hh">
+    <div>
+      <div class="eyebrow">The watch of Bruma</div>
+      <h2 style="margin:4px 0 8px">Clock on, clock off</h2>
+      <p class="lede" style="margin:0;max-width:480px">Every shift the watch stands is written down here. Nobody is
+      paid, promoted or pulled up on their hours from memory.</p>
+    </div>
+    ${seeAll ? `<div class="hhbtns">
+      <a class="btn ghost" href="/watch/log">The whole log</a>
+      ${O.can(u, 'watchroster') ? '<a class="btn ghost" href="/watch/roster">The roster</a>' : ''}
+    </div>` : ''}
+  </div>
 </section>
 
-${O.can(u, 'watchclock') ? `<section class="card">
-  <h3 style="margin-top:0">${mine ? 'You are on the watch' : 'Clock on'}</h3>
-  ${mine
-    ? `<p>At <b>${esc(W.postName(mine.post))}</b> since <b>${esc(V.when(mine.on))}</b>.</p>
-       <form method="post" action="/watch/off">${V.hidden(req.session.csrf)}
-         <input type="hidden" name="back" value="/watch">
-         <label for="note">Set down what happened on your watch</label>
-         <textarea id="note" name="note" placeholder="Quiet watch. Nothing to report."></textarea>
-         <div class="btnrow"><button class="btn danger" type="submit">Clock off</button></div>
-       </form>`
-    : `<form method="post" action="/watch/on">${V.hidden(req.session.csrf)}
-         <input type="hidden" name="back" value="/watch">
-         <label for="post">Where do you stand?</label>
-         <select id="post" name="post">${W.POSTS.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
-         <div class="btnrow"><button class="btn go" type="submit">Clock on</button></div>
-       </form>`}
+${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : ''}">
+  <div class="owrow">
+    <div class="owl">
+      <div class="eyebrow">${mine ? 'You are on watch' : 'You are not on watch'}</div>
+      <div class="owpost">${mine ? esc(W.postName(mine.post)) : 'Clock on to stand'}</div>
+      <div class="owsince">${mine
+        ? 'On since <b>' + esc(clock(mine.on)) + '</b> ' + esc(partOfDay(mine.on)) + ' · <b>' + esc(V.hours(W.minutesOf(mine))) + '</b> stood'
+        : 'Choose a post and clock on. The hours only count once they are written down.'}</div>
+    </div>
+    <div class="owr">
+      ${mine
+        ? `<form method="post" action="/watch/off" class="inline">${V.hidden(req.session.csrf)}
+             <input type="hidden" name="back" value="/watch">
+             <input type="hidden" name="note" value="">
+             <button class="btn go" type="submit">Clock off</button></form>
+           <a class="btn ghost" href="#offnote">Change post</a>`
+        : `<form method="post" action="/watch/on" class="owon">${V.hidden(req.session.csrf)}
+             <input type="hidden" name="back" value="/watch">
+             <select name="post" aria-label="Where do you stand">${W.POSTS.map(p =>
+               `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+             <button class="btn go" type="submit">Clock on</button></form>`}
+    </div>
+  </div>
 </section>` : ''}
 
-<div class="grid three">
-  <div class="stat"><div class="k">Standing now</div><div class="v">${duty.length}</div><div class="n">${duty.length === 1 ? 'guard on the watch' : 'guards on the watch'}</div></div>
-  <div class="stat"><div class="k">Your hours this week</div><div class="v">${esc(V.hours(myWeek ? myWeek.minutes : 0))}</div><div class="n">${myWeek ? myWeek.shifts : 0} ${myWeek && myWeek.shifts === 1 ? 'shift' : 'shifts'}</div></div>
-  ${seeAll ? `<div class="stat"><div class="k">The watch this week</div><div class="v">${esc(V.hours(week.reduce((n, r) => n + r.minutes, 0)))}</div><div class="n">across ${week.length} ${week.length === 1 ? 'guard' : 'guards'}</div></div>` : ''}
+<div class="tiles four">
+  <div class="stat"><div class="k">On watch now</div><div class="v">${duty.length}</div></div>
+  <div class="stat"><div class="k">Posts unmanned</div><div class="v${unmanned ? ' vacant' : ''}">${unmanned}</div></div>
+  <div class="stat"><div class="k">${seeAll ? 'Hours this week' : 'Your hours this week'}</div><div class="v">${
+    seeAll ? Math.round(weekTotal / 60) : Math.round((myWeek ? myWeek.minutes : 0) / 60)}</div></div>
+  <div class="stat"><div class="k">Shifts missed</div><div class="v${missed ? ' vacant' : ''}">${missed}</div></div>
 </div>
 
-${duty.length ? `<section class="card" style="margin-top:20px">
-  <h3 style="margin-top:0">On the watch now</h3>
-  ${V.table([
-      { head: 'Guard', cell: r => esc(r.name) },
-      { head: 'Post', cell: r => esc(W.postName(r.post)) },
-      { head: 'On since', cell: r => esc(V.when(r.on)) },
-      { head: '', num: true, cell: r => `<span class="tag on">standing</span>` }
-    ], duty)}
-</section>` : ''}
+<div class="hallcols">
+  <div>
+    <section class="card">
+      <div class="eyebrow" style="margin-bottom:12px">Stood today</div>
+      ${today.length ? `<div class="tablewrap"><table class="watchtable"><thead><tr>
+        <th>Guard</th><th>Post</th><th>On</th><th>Off</th><th class="num">Stood</th></tr></thead><tbody>
+        ${today.map(sh => `<tr${sh.off ? '' : ' class="live"'}>
+          <td><b>${esc(sh.name)}</b></td>
+          <td>${esc(W.postName(sh.post))}</td>
+          <td>${esc(stamp(sh.on))}</td>
+          <td>${sh.off ? esc(stamp(sh.off)) : '<span class="onnow">— on watch</span>'}</td>
+          <td class="num">${esc(V.hours(W.minutesOf(sh)))}</td>
+        </tr>`).join('')}
+      </tbody></table></div>
+      <p class="hint" style="margin-top:12px">A guard who forgets to clock off is closed out at the end of the watch
+      and marked, so the hours stay honest.</p>` : V.empty('Nobody has stood yet today.')}
+    </section>
 
-${seeAll ? `<section class="card">
-  <h3 style="margin-top:0">Hours this week</h3>
-  ${week.length ? V.table([
-      { head: 'Guard', cell: r => esc(r.name) },
-      { head: 'Shifts', num: true, cell: r => r.shifts },
-      { head: 'Hours stood', num: true, cell: r => esc(V.hours(r.minutes)) },
-      { head: 'Last off', cell: r => esc(V.when(r.last)) }
-    ], week) : V.empty('Nobody has stood a full shift this week yet.')}
-  <p style="margin:12px 0 0"><a href="/watch/log">The whole log</a> · <a href="/watch/roster">The roster</a></p>
-</section>` : ''}
+    ${mine ? `<section class="card" id="offnote">
+      <div class="eyebrow" style="margin-bottom:10px">Coming off</div>
+      <form method="post" action="/watch/off">${V.hidden(req.session.csrf)}
+        <input type="hidden" name="back" value="/watch">
+        <label for="note">Set down what happened on your watch</label>
+        <textarea id="note" name="note" rows="3" placeholder="Quiet watch. Nothing to report."></textarea>
+        <div class="btnrow"><button class="btn go" type="submit">Clock off</button></div>
+      </form>
+    </section>` : ''}
 
-<section class="card">
-  <h3 style="margin-top:0">${seeAll ? 'The last shifts' : 'Your last shifts'}</h3>
-  ${recent.length ? V.table([
-      { head: 'Guard', cell: r => esc(r.name) },
-      { head: 'Post', cell: r => esc(W.postName(r.post)) },
-      { head: 'On', cell: r => esc(V.when(r.on)) },
-      { head: 'Off', cell: r => r.off ? esc(V.when(r.off)) : '<span class="tag on">standing</span>' },
-      { head: 'Stood', num: true, cell: r => r.off ? esc(V.hours(r.minutes)) : '' },
-      { head: 'Set down', cell: r => esc(r.note || '') }
-    ], recent) : V.empty('No shifts stood yet.')}
-</section>
+    <section class="card">
+      <div class="eyebrow" style="margin-bottom:10px">The day book</div>
+      <p class="hint" style="margin:0 0 14px">Standing orders and anything the watch should know.</p>
+      ${O.can(u, 'watchroster') ? `<form method="post" action="/watch/note">${V.hidden(req.session.csrf)}
+        <textarea name="text" rows="2" placeholder="Doubled guard on the North Gate until the pass clears."></textarea>
+        <div class="btnrow"><button class="btn ghost" type="submit">Write it</button></div>
+      </form>` : ''}
+      ${notes.length ? `<div class="rows">${notes.map(n => `<div class="row">
+        <div class="main">${esc(n.text)}<div class="hint">${esc(n.name)} · ${esc(V.when(n.at))}</div></div>
+        ${O.can(u, 'watchamend') ? `<div class="side"><form method="post" action="/watch/note/remove" class="inline">${V.hidden(req.session.csrf)}
+          <input type="hidden" name="id" value="${esc(n.id)}"><button class="btn ghost small" type="submit">Strike</button></form></div>` : ''}
+      </div>`).join('')}</div>` : V.empty('The book is empty.')}
+    </section>
+  </div>
 
-<section class="card">
-  <h3 style="margin-top:0">The day book</h3>
-  <p class="lede">Standing orders and anything the watch should know.</p>
-  ${O.can(u, 'watchroster') ? `<form method="post" action="/watch/note">${V.hidden(req.session.csrf)}
-    <label for="book">Write into the book</label>
-    <textarea id="book" name="text" placeholder="Doubled guard on the North Gate until the pass clears." style="min-height:70px"></textarea>
-    <div class="btnrow"><button class="btn" type="submit">Write it</button></div>
-  </form>` : ''}
-  ${notes.length ? `<div class="rows">${notes.map(n => `<div class="row">
-    <div class="main">${esc(n.text)}<div class="hint">${esc(n.name)} · ${esc(V.when(n.at))}</div></div>
-    ${O.can(u, 'watchamend') ? `<div class="side"><form method="post" action="/watch/note/remove" class="inline">${V.hidden(req.session.csrf)}
-      <input type="hidden" name="id" value="${esc(n.id)}"><button class="btn ghost small" type="submit">Strike</button></form></div>` : ''}
-  </div>`).join('')}</div>` : V.empty('The book is empty.')}
-</section>`;
+  <aside>
+    <section class="card tight">
+      <div class="eyebrow" style="margin-bottom:12px">The posts</div>
+      <div class="postlist">
+        ${posts.map(p => `<div class="pst ${esc(p.state)}">
+          <div class="pstn"><b>${esc(p.name)}</b><i>${
+            p.state === 'manned' ? esc(p.who)
+            : p.state === 'returned' ? 'patrol returned ' + esc(clock(p.last))
+            : p.last ? 'nobody since ' + esc(clock(p.last)) : 'nobody yet'}</i></div>
+          <span class="tag ${p.state === 'manned' ? 'in' : p.state === 'returned' ? '' : 'out'}">${
+            p.state === 'manned' ? 'Manned' : p.state === 'returned' ? 'Returned' : 'Empty'}</span>
+        </div>`).join('')}
+      </div>
+    </section>
 
-    res.page({ title: 'The Watch', body, active: 'watch' });
+    ${seeAll && week.length ? `<section class="card tight">
+      <div class="eyebrow" style="margin-bottom:12px">Hours this week</div>
+      <div class="bars">
+        ${week.map(r => `<div class="bar">
+          <div class="brn">${esc(r.name)}<span>${Math.round(r.minutes / 60)}h</span></div>
+          <div class="brt"><i style="width:${Math.max(3, Math.round((r.minutes / high) * 100))}%"></i></div>
+        </div>`).join('')}
+      </div>
+    </section>` : ''}
+
+    ${!seeAll && myWeek ? `<section class="card tight">
+      <div class="eyebrow" style="margin-bottom:12px">Your week</div>
+      <div class="rows tight">
+        <div class="row"><div class="main">Shifts stood</div><div class="side">${myWeek.shifts}</div></div>
+        <div class="row"><div class="main">Hours stood</div><div class="side">${esc(V.hours(myWeek.minutes))}</div></div>
+        <div class="row"><div class="main">Last off</div><div class="side">${esc(V.when(myWeek.last))}</div></div>
+      </div>
+    </section>` : ''}
+  </aside>
+</div>`;
+
+    res.page({ title: 'The Watch', body, active: 'watch', wide: true });
   });
 
   app.post('/watch/on', checkCsrf, need('watchclock'), wrap((req, res) => {
