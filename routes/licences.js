@@ -36,6 +36,33 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
 
 <div class="cols">
   <div>
+    ${mayGrant ? `<details class="bigfold">
+      <summary>Grant a licence to trade</summary>
+      <form method="post" action="/licences">${V.hidden(req.session.csrf)}
+        <div class="formgrid">
+          <label class="f2"><span>Held by</span>
+            <input name="holder" type="text" maxlength="120" required placeholder="Carmen Litte"></label>
+          <label class="f2"><span>Under the sign of</span>
+            <input name="sign" type="text" maxlength="120" placeholder="Novaroma"></label>
+          <label class="f2"><span>What is licensed</span>
+            <select name="trade">${L.TRADES.map(t =>
+              `<option value="${t.id}">${esc(t.name)} \u2014 ${t.fee} septims</option>`).join('')}</select></label>
+          <label class="f2"><span>Where</span>
+            <input name="place" type="text" maxlength="140" placeholder="The Market, within the walls"></label>
+          <label><span>Fee in septims</span>
+            <input name="fee" type="number" min="0" step="10" value="150"></label>
+          <label><span>Runs from</span>
+            <input name="from" type="text" maxlength="80" placeholder="The 1st of Frostfall"></label>
+          <label><span>Runs until</span>
+            <input name="until" type="text" maxlength="80" placeholder="The 1st of Frostfall next"></label>
+          <label><span>And on what real day</span>
+            <input name="untilIso" type="date"></label>
+          <label class="f4"><span>Upon what terms</span>
+            <textarea name="terms" rows="2" maxlength="2000" placeholder="To keep the stall swept and to render honest weight."></textarea></label>
+        </div>
+        <div class="btnrow"><button class="btn go" type="submit">Grant it</button></div>
+      </form>
+    </details>` : ''}
     <section class="card">
       <h3 style="margin-top:0">The roll</h3>
       <form method="get" action="/licences" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
@@ -74,31 +101,6 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
         <div class="side">${esc(l.until || l.untilIso)}</div></div>`).join('')}</div>
     </section>` : ''}
 
-    ${mayGrant ? `<section class="card">
-      <h3 style="margin-top:0">Grant a licence</h3>
-      <form method="post" action="/licences">${V.hidden(req.session.csrf)}
-        <label for="holder">Held by</label>
-        <input id="holder" name="holder" type="text" maxlength="120" required placeholder="Carmen Litte">
-        <label for="sign">Under the sign of</label>
-        <input id="sign" name="sign" type="text" maxlength="120" placeholder="Novaroma">
-        <label for="trade">What is licensed</label>
-        <select id="trade" name="trade">${L.TRADES.map(t =>
-          `<option value="${t.id}" data-fee="${t.fee}">${esc(t.name)} — ${t.fee} septims</option>`).join('')}</select>
-        <label for="place">Where</label>
-        <input id="place" name="place" type="text" maxlength="140" placeholder="The Market, within the walls">
-        <label for="fee">Fee in septims</label>
-        <input id="fee" name="fee" type="number" min="0" step="10" value="150">
-        <label for="from">Runs from</label>
-        <input id="from" name="from" type="text" maxlength="80" placeholder="The 1st of Frostfall">
-        <label for="until">Runs until</label>
-        <input id="until" name="until" type="text" maxlength="80" placeholder="The 1st of Frostfall next">
-        <label for="untilIso">And on what real day</label>
-        <input id="untilIso" name="untilIso" type="date">
-        <label for="terms">Upon what terms</label>
-        <textarea id="terms" name="terms" rows="3" maxlength="2000" placeholder="To keep the stall swept and to render honest weight."></textarea>
-        <div class="btnrow"><button class="btn go" type="submit">Grant it</button></div>
-      </form>
-    </section>` : ''}
   </aside>
 </div>`;
     res.page({ title: 'Licences to Trade', body, active: 'licences', wide: true });

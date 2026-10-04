@@ -695,3 +695,68 @@ ul.procl span{display:block;font-size:11.5px;letter-spacing:.08em;color:var(--fa
 .passcard[data-pass="shut"]{border-left-color:#B9452F}
 .pcstate{font-family:var(--serif);font-weight:500;font-size:24px;color:var(--bright);line-height:1.2}
 .pcnote{font-size:13.5px;color:var(--faint);margin-top:6px;line-height:1.55}
+
+details.bigfold{background:var(--card);border:1px solid var(--edge);border-radius:3px;
+  padding:0;margin-bottom:18px;overflow:hidden}
+details.bigfold > summary{cursor:pointer;list-style:none;padding:15px 20px;
+  font-family:var(--serif);font-weight:500;font-size:19px;color:var(--warm);
+  display:flex;align-items:center;gap:11px;transition:background .18s ease,color .18s ease}
+details.bigfold > summary::-webkit-details-marker{display:none}
+details.bigfold > summary::before{content:"+";font-family:var(--sans);font-size:17px;color:var(--accent);
+  width:22px;height:22px;border:1px solid var(--edge2);border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;line-height:1;transition:background .18s ease}
+details.bigfold[open] > summary::before{content:"\2212"}
+details.bigfold > summary:hover{background:#241A12;color:var(--bright)}
+details.bigfold > summary:hover::before{background:rgba(224,154,62,.14);border-color:var(--accent)}
+details.bigfold > form{padding:4px 20px 20px;border-top:1px solid var(--edge)}
+details.bigfold > form > .btnrow{margin-top:16px}
+
+.formgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px 16px;margin-top:16px}
+.formgrid > label{display:block;margin:0}
+.formgrid > label > span{display:block;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--eyebrow);margin-bottom:6px}
+.formgrid input,.formgrid select,.formgrid textarea{margin:0;width:100%;min-height:0}
+.formgrid textarea{min-height:0;height:76px;resize:vertical;line-height:1.55}
+.formgrid .f2{grid-column:span 2}
+.formgrid .f3{grid-column:span 3}
+.formgrid .f4{grid-column:1 / -1}
+@media (max-width:980px){.formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .formgrid .f3{grid-column:span 2}}
+@media (max-width:560px){.formgrid{grid-template-columns:minmax(0,1fr)}
+  .formgrid .f2,.formgrid .f3{grid-column:span 1}}
+
+.peoplebar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0}
+.peoplebar input{margin:0;max-width:300px;flex:1 1 220px}
+.peoplebar select{margin:0;max-width:230px}
+.peoplebar .btn{margin:0}
+
+.people{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+.prow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1.2fr);gap:16px;
+  align-items:center;background:var(--card);border:1px solid var(--edge);border-radius:3px;
+  padding:13px 17px;text-decoration:none;transition:background .18s ease,border-color .18s ease}
+.prow:hover{background:#241A12;border-color:var(--edge2)}
+.pn b{display:block;font-family:var(--serif);font-weight:500;font-size:18px;color:var(--warm);line-height:1.25}
+.pn i{display:block;font-style:normal;font-size:12.5px;color:var(--faint);margin-top:2px}
+.pmarks{display:flex;gap:6px;flex-wrap:wrap}
+.ptally{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tally{font-size:11px;letter-spacing:.07em;color:var(--dim);border:1px solid var(--edge);
+  border-radius:2px;padding:3px 8px;white-space:nowrap}
+.tally b{color:var(--eyebrow);font-weight:500;margin-left:3px}
+@media (max-width:980px){.prow{grid-template-columns:minmax(0,1fr);gap:9px}
+  .pmarks,.ptally{justify-content:flex-start}}
+
+.marks{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.attach{display:flex;flex-direction:column}
+.arow{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;
+  padding:12px 0 12px 14px;border-bottom:1px solid var(--edge);border-left:2px solid transparent}
+.arow:last-child{border-bottom:none}
+.arow.in{border-left-color:#39614A}
+.arow.out{border-left-color:#B9452F}
+.arow.gold{border-left-color:var(--accent)}
+.am{min-width:0;flex:1 1 auto}
+.am b{display:block;font-family:var(--serif);font-weight:500;font-size:16.5px;color:var(--warm);line-height:1.35}
+.am b a{color:var(--warm);text-decoration:none}
+.am b a:hover{color:var(--linkhi)}
+.am i{display:block;font-style:normal;font-size:13.5px;color:var(--faint);margin-top:3px;line-height:1.5}
+.as{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.aw{font-size:11.5px;letter-spacing:.06em;color:var(--dim);white-space:nowrap}
