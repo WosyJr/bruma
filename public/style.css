@@ -42,8 +42,8 @@ a:hover{color:var(--linkhi)}
   align-items:center;gap:26px;min-height:132px}
 .titles{flex:1 1 auto;min-width:0}
 .crestright{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:11px;padding-left:20px}
-.arms{width:auto;height:108px;flex:none;display:block;align-self:center;
-  filter:drop-shadow(0 6px 14px rgba(0,0,0,.55))}
+.arms{width:auto;height:108px;flex:none;display:block}
+.mast{filter:drop-shadow(0 6px 14px rgba(0,0,0,.55))}
 .crest h1{margin:3px 0 4px;font-family:var(--serif);font-weight:500;font-size:44px;line-height:1.02}
 .crest h1 a{color:var(--bright);text-decoration:none}
 .eyebrow{font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:var(--eyebrow)}
@@ -221,7 +221,12 @@ ul.plain li:last-child{border-bottom:none}
 
 .crest::after{animation:emberglow 7s ease-in-out infinite}
 .hero::before{animation:emberglow 9s ease-in-out infinite}
-.arms{transform-origin:50% 4%;animation:sway 9s ease-in-out infinite}
+.mast{display:block;flex:none;align-self:center;transform-origin:50% 3%;
+  transform:rotate(calc(var(--wind,0) * 2.1deg)) skewX(calc(var(--wind,0) * -1.5deg))
+    translateX(calc(var(--wind,0) * 4px));
+  transition:transform .55s cubic-bezier(.22,.8,.3,1)}
+.arms{transform-origin:50% 3%;animation:sway 9s ease-in-out infinite;filter:url(#cloth)}
+.weave{position:absolute;width:0;height:0;overflow:hidden}
 .rule svg path{animation:flicker 3.4s ease-in-out infinite}
 
 .wrap > *{animation:rise .42s cubic-bezier(.22,.8,.3,1) both}
@@ -257,7 +262,7 @@ tbody tr{transition:background .14s ease}
 a{transition:color .15s ease}
 .tag{transition:background .18s ease}
 
-.pin{animation:droppin .5s cubic-bezier(.3,1.5,.5,1) both}
+.pin{animation:plant .74s cubic-bezier(.25,.9,.4,1) both}
 .pin .pinlabel{animation:none}
 .pin svg{transition:transform .2s cubic-bezier(.3,1.4,.5,1)}
 .pin .ring{animation:beat 2.4s ease-in-out infinite;transform-origin:14px 13px}
@@ -274,7 +279,13 @@ details > summary{transition:color .15s ease}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;
     transition-duration:.001ms !important;scroll-behavior:auto !important}
-  .arms,.crest::after,.hero::before,.pin .ring,.rule svg path{animation:none !important}
+  .arms,.crest::after,.hero::before,.pin .ring,.rule svg path,
+  .passstrip .drift i,.passstrip::before{animation:none !important}
+  .mast{transform:none !important}
+  .arms{filter:none !important}
+  .passstrip .drift{opacity:.12}
+  .pin::after{display:none}
+  .pin::before{opacity:.46;transform:translateX(-50%)}
   .btn:hover,.choose a:hover{transform:none}
 }
 
@@ -303,7 +314,16 @@ details > summary{transition:color .15s ease}
 .lexprose{line-height:1.75;color:var(--muted);margin:0 0 14px}
 .lexnote{line-height:1.7;color:var(--muted);margin:12px 0 0;font-size:16px}
 
-.lextoc{position:sticky;top:14px}
+.lexcols > aside{position:sticky;top:14px;max-height:calc(100vh - 28px);
+  overflow-y:auto;overscroll-behavior:contain;padding-right:4px;
+  scrollbar-width:thin;scrollbar-color:var(--edge2) transparent;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 26px),transparent 100%);
+  mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 26px),transparent 100%)}
+.lexcols > aside::-webkit-scrollbar{width:7px}
+.lexcols > aside::-webkit-scrollbar-track{background:transparent}
+.lexcols > aside::-webkit-scrollbar-thumb{background:var(--edge2);border-radius:4px}
+.lexcols > aside::-webkit-scrollbar-thumb:hover{background:var(--eyebrow)}
+.lextoc{position:static}
 .lextoc ol{list-style:none;margin:0;padding:0;counter-reset:none}
 .lextoc li{border-bottom:1px solid var(--edge)}
 .lextoc li:last-child{border-bottom:none}
@@ -313,7 +333,9 @@ details > summary{transition:color .15s ease}
 .lextoc a span{flex:none;font-size:11.5px;letter-spacing:.1em;color:var(--eyebrow);min-width:26px;
   font-variant-numeric:tabular-nums}
 .lexcols{display:grid;gap:26px;grid-template-columns:minmax(0,1fr) 280px;align-items:start}
-@media (max-width:980px){.lexcols{grid-template-columns:minmax(0,1fr)}.lextoc{position:static;order:-1}}
+@media (max-width:980px){.lexcols{grid-template-columns:minmax(0,1fr)}
+  .lexcols > aside{position:static;order:-1;max-height:none;overflow:visible;
+    -webkit-mask-image:none;mask-image:none}}
 
 .titlecard{display:flex;gap:16px;align-items:flex-start;padding:16px 18px;background:var(--card);
   border:1px solid var(--edge);border-top:2px solid var(--accent);border-radius:3px;text-decoration:none}
@@ -353,3 +375,81 @@ details.fold[open] > summary::after{content:"\2212"}
 details.fold > summary:hover{color:var(--bright)}
 details.fold > .inner{padding:0 18px 18px}
 details.fold[open] > summary{border-bottom:1px solid var(--edge);margin-bottom:16px}
+
+.passstrip{display:block;position:relative;overflow:hidden;text-decoration:none;
+  background:linear-gradient(180deg,#0C0906,#120D09);border-bottom:1px solid var(--edge);
+  --spd:68s;--amt:.26;--tint:220,232,245;--slant:-6deg;--haze:0;--den:1}
+.passstrip .drift{position:absolute;inset:-70px -34%;pointer-events:none;
+  transform:rotate(var(--slant));opacity:var(--amt)}
+.passstrip .drift i{position:absolute;inset:0;display:block;background-repeat:repeat;
+  will-change:background-position}
+.passstrip .drift i:nth-child(1){
+  background-image:radial-gradient(circle at 50% 50%,rgba(var(--tint),.85) 0 1.1px,transparent 1.6px);
+  background-size:calc(34px * var(--den,1)) calc(21px * var(--den,1));animation:drift var(--spd) linear infinite}
+.passstrip .drift i:nth-child(2){transform:rotate(3.5deg) translateX(7%);
+  background-image:radial-gradient(circle at 50% 50%,rgba(var(--tint),.55) 0 1.7px,transparent 2.4px);
+  background-size:calc(63px * var(--den,1)) calc(39px * var(--den,1));animation:drift calc(var(--spd) * .62) linear infinite;opacity:.8}
+.passstrip .drift i:nth-child(3){transform:rotate(-4.5deg) translateX(-9%);
+  background-image:radial-gradient(circle at 50% 50%,rgba(var(--tint),.32) 0 2.6px,transparent 3.6px);
+  background-size:calc(112px * var(--den,1)) calc(69px * var(--den,1));animation:drift calc(var(--spd) * .38) linear infinite;opacity:.6}
+.passstrip::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:var(--haze);
+  background:linear-gradient(100deg,transparent 18%,rgba(var(--tint),.16) 48%,transparent 78%);
+  background-size:220% 100%;animation:sweep 3.4s linear infinite}
+.passstrip::after{content:"";position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 -14px 26px -14px rgba(0,0,0,.8),inset 0 14px 22px -16px rgba(0,0,0,.7)}
+.passinner{position:relative;z-index:2;max-width:1120px;margin:0 auto;padding:7px 32px;
+  display:flex;align-items:baseline;gap:14px;justify-content:space-between}
+.passsay{display:flex;align-items:baseline;gap:10px;min-width:0}
+.passsay b{font-family:var(--serif);font-weight:500;font-size:15.5px;color:var(--warm);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.password{font-size:11.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--eyebrow);
+  white-space:nowrap}
+.passlook{flex:none;font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim)}
+.passstrip:hover .passsay b{color:var(--linkhi)}
+.passstrip:hover{background:linear-gradient(180deg,#100C08,#171009)}
+
+.passstrip[data-pass="open"]{--spd:120s;--amt:.14;--tint:236,210,170;--slant:-2deg;--den:1.9}
+.passstrip[data-pass="open"] .passsay b{color:#D9E7D2}
+.passstrip[data-pass="riders"]{--spd:52s;--amt:.38;--tint:222,234,246;--slant:-9deg;--den:1.15}
+.passstrip[data-pass="escort"]{--spd:30s;--amt:.5;--tint:238,214,172;--slant:-13deg;--haze:.5;--den:.9}
+.passstrip[data-pass="escort"] .passsay b{color:#F2D9A8}
+.passstrip[data-pass="shut"]{--spd:7s;--amt:.62;--tint:214,232,250;--slant:-21deg;--haze:.75;--den:1.1}
+.passstrip[data-pass="shut"]{background:linear-gradient(180deg,#0A0D12,#141A22)}
+.passstrip[data-pass="shut"] .passsay b{color:#DCE9F7}
+.passstrip[data-pass="shut"] .password{color:#9FBAD2}
+.passstrip[data-pass="shut"] .drift i:nth-child(1){
+  background-image:radial-gradient(ellipse 13px .85px at 50% 50%,rgba(var(--tint),.9) 0 42%,transparent 100%)}
+.passstrip[data-pass="shut"] .drift i:nth-child(2){
+  background-image:radial-gradient(ellipse 24px 1.2px at 50% 50%,rgba(var(--tint),.55) 0 38%,transparent 100%)}
+
+@keyframes drift{from{background-position:0 0}to{background-position:-1680px 36px}}
+
+@keyframes plant{
+  0%{opacity:0;transform:translate(-50%,-300%) scale(.68)}
+  38%{opacity:1}
+  46%{transform:translate(-50%,-100%) scale(1)}
+  55%{transform:translate(-50%,-100%) scale(1.2,.8)}
+  68%{transform:translate(-50%,-134%) scale(.94,1.08)}
+  80%{transform:translate(-50%,-100%) scale(1.09,.92)}
+  90%{transform:translate(-50%,-112%) scale(.98,1.03)}
+  100%{opacity:1;transform:translate(-50%,-100%) scale(1)}
+}
+@keyframes settle{
+  0%,44%{opacity:0;transform:translateX(-50%) scale(2.6,.45)}
+  56%{opacity:.68;transform:translateX(-50%) scale(1.25,1)}
+  68%{opacity:.2;transform:translateX(-50%) scale(1.9,.72)}
+  82%{opacity:.52;transform:translateX(-50%) scale(1.08,1)}
+  100%{opacity:.46;transform:translateX(-50%) scale(1,1)}
+}
+@keyframes puff{
+  0%,46%{opacity:0;transform:translateX(-50%) scale(.3)}
+  58%{opacity:.5;transform:translateX(-50%) scale(1)}
+  100%{opacity:0;transform:translateX(-50%) scale(2.1)}
+}
+.pin::before{content:"";position:absolute;left:50%;bottom:-2px;width:16px;height:5px;
+  border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.72) 0 55%,transparent 72%);
+  pointer-events:none;opacity:.46;
+  animation:settle .74s cubic-bezier(.3,1,.5,1) both}
+.pin::after{content:"";position:absolute;left:50%;bottom:-4px;width:26px;height:9px;
+  border-radius:50%;border:1px solid rgba(244,212,162,.5);pointer-events:none;opacity:0;
+  animation:puff .74s ease-out both}

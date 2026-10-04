@@ -202,3 +202,65 @@
     });
   });
 })();
+
+(function () {
+  var crest = document.querySelector('.crest');
+  var mast = document.querySelector('.mast');
+  if (!crest || !mast) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  var map = document.getElementById('clothmap');
+  var want = 0;
+  var have = 0;
+  var gust = 0;
+  var last = 0;
+  var running = false;
+
+  function onMove(e) {
+    var w = window.innerWidth || 1;
+    var next = ((e.clientX / w) * 2 - 1);
+    var moved = Math.abs(next - want);
+    want = Math.max(-1, Math.min(1, next));
+    gust = Math.min(1, gust + moved * 2.2);
+    last = performance.now();
+    if (!running) { running = true; requestAnimationFrame(frame); }
+  }
+
+  function frame(now) {
+    have += (want - have) * 0.07;
+    gust *= 0.94;
+    mast.style.setProperty('--wind', have.toFixed(4));
+    if (map) map.setAttribute('scale', (5 + gust * 16).toFixed(2));
+    if (Math.abs(want - have) < 0.002 && gust < 0.01 && now - last > 400) {
+      running = false;
+      if (map) map.setAttribute('scale', '5');
+      return;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  window.addEventListener('mousemove', onMove, { passive: true });
+  window.addEventListener('blur', function () { want = 0; gust = 0; last = performance.now();
+    if (!running) { running = true; requestAnimationFrame(frame); } });
+})();
+
+(function () {
+  var strip = document.querySelector('.passstrip');
+  if (!strip) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (strip.getAttribute('data-pass') !== 'shut') return;
+
+  var drift = strip.querySelector('.drift');
+  if (!drift) return;
+  var base = 0.72;
+
+  function gustIt() {
+    var peak = base + 0.22;
+    drift.animate(
+      [{ opacity: base }, { opacity: peak, offset: 0.35 }, { opacity: base }],
+      { duration: 900 + Math.random() * 700, easing: 'ease-in-out' }
+    );
+    setTimeout(gustIt, 2600 + Math.random() * 4200);
+  }
+  setTimeout(gustIt, 1800 + Math.random() * 2000);
+})();
