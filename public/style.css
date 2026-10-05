@@ -464,6 +464,17 @@ details.fold[open] > summary{border-bottom:1px solid var(--edge);margin-bottom:1
 .gaolcard h3 a,.petcard h3 a{text-decoration:none;color:var(--bright);font-family:var(--serif);font-weight:500}
 .gaolcard h3 a:hover{color:var(--linkhi)}
 
+.deedbox{position:relative;border:1px solid var(--edge);border-left:3px solid var(--accent);
+  border-radius:3px;background:linear-gradient(180deg,rgba(224,154,62,.055),rgba(0,0,0,0) 72%);
+  padding:14px 16px 16px;margin:0 0 4px}
+.deedbox::after{content:"";position:absolute;right:14px;top:12px;width:34px;height:34px;
+  border:1px solid var(--edge2);border-radius:50%;opacity:.35;pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,rgba(224,154,62,.22),rgba(0,0,0,0) 70%)}
+.deedbox .gdays{margin-right:46px}
+.deedbox > .btnrow{margin-top:14px}
+.deedbox details{margin-bottom:0}
+.deedbox form.stack{margin-top:14px;padding-top:14px;border-top:1px solid var(--edge)}
+
 .checkform{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
 .checkform input{max-width:260px;font-size:21px;letter-spacing:.22em;text-transform:uppercase;
   font-family:var(--sans);text-align:center;margin:0}
@@ -798,3 +809,8 @@ table.watchtable td form{margin:0}
 .markcard{margin-top:18px;border:1px solid var(--edge2);border-left:2px solid var(--accent);
   border-radius:0 3px 3px 0;padding:15px 18px;background:#201810}
 .markcard .formgrid{margin-top:12px}
+
+.mapwrap[data-map="city"]{background:#0E0C0A}
+.mapwrap[data-map="city"] img{filter:sepia(.55) brightness(1.14) contrast(.98) saturate(1.05) hue-rotate(-6deg)}
+.mapwrap[data-map="city"]:hover img{filter:sepia(.46) brightness(1.21) contrast(1.01) saturate(1.08) hue-rotate(-6deg)}
+.mapwrap[data-map="city"]::after{box-shadow:inset 0 0 70px rgba(10,8,6,.4)}

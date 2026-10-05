@@ -1,6 +1,7 @@
 const V = require('../lib/views');
 const O = require('../lib/offices');
 const P = require('../lib/property');
+const D = require('../lib/deeds');
 
 const esc = V.esc;
 
@@ -67,7 +68,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
 </div>
 
 <section class="card" style="margin-top:20px">
-  <div class="mapwrap" id="map" data-place="${mayEnter ? '1' : ''}">
+  <div class="mapwrap" id="map" data-map="${esc(mapId)}" data-place="${mayEnter ? '1' : ''}">
     <img src="${esc(theMap.file)}" alt="A map of ${esc(theMap.name)}" id="mapimg">
     ${all.map(p => pin(p, p.id === sel)).join('')}
   </div>
@@ -168,6 +169,98 @@ ${O.can(req.user, 'propstrike') ? `<section class="card">
     const h = P.get(req.params.id);
     res.redirect('/property?map=' + encodeURIComponent((h && h.map) || 'county') + '&p=' + encodeURIComponent(req.params.id) + '#map');
   }));
+
+  const deedBack = (req, propId) => {
+    const asked = String(req.body.back || '');
+    if (asked.startsWith('/property')) return asked + '#chosen';
+    const h = P.get(propId);
+    return '/property?map=' + encodeURIComponent((h && h.map) || 'county') + '&p=' + encodeURIComponent(propId || '') + '#chosen';
+  };
+
+  app.post('/property/deeds', checkCsrf, need('propdeed'), wrap((req, res) => {
+    let where = String(req.body.prop || '');
+    try {
+      const d = D.draw(req.body, req.user);
+      where = d.prop;
+      req.session.flash = { text: 'Deed no. ' + d.no + ' is drawn upon ' + d.propName + ', in favour of ' + d.holder + '.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect(deedBack(req, where));
+  }));
+
+  app.post('/property/deeds/:id', checkCsrf, need('propdeed'), wrap((req, res) => {
+    const was = D.get(req.params.id);
+    try {
+      const d = D.amend(req.params.id, req.body, req.user);
+      req.session.flash = { text: 'Deed no. ' + d.no + ' is amended.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect(deedBack(req, was ? was.prop : ''));
+  }));
+
+  app.post('/property/deeds/:id/end', checkCsrf, need('propdeed'), wrap((req, res) => {
+    const was = D.get(req.params.id);
+    try {
+      const d = D.end(req.params.id, req.body, req.user);
+      req.session.flash = { text: 'Deed no. ' + d.no + ' is now ' + D.stateName(d.state).toLowerCase() + '.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect(deedBack(req, was ? was.prop : ''));
+  }));
+
+  app.get('/property/deeds/:id/doc', need('propread'), (req, res) => {
+    const Papers = require('../lib/papers');
+    const d = D.get(req.params.id);
+    if (!d) return res.say('No such deed', 'Nothing in the deed roll answers to that.', 404);
+    const h = P.get(d.prop);
+    const paper = Papers.forRef('deeds', d.id);
+    const live = d.state === 'force';
+
+    const bodyHtml = [
+      Papers.three([
+        ['Deed no.', String(d.no)],
+        ['What kind', D.kindName(d.kind)],
+        ['Standing', D.stateName(d.state)]
+      ]),
+      Papers.band(d.rent ? 'Rent reserved' : 'Rent reserved',
+        d.rent ? V.septims(d.rent) + ' septims by ' + D.periodName(d.per) : 'No rent',
+        d.rent ? V.septims(D.yearly(d)) + ' septims in the year' : 'Held without rent to the County'),
+      Papers.facts([
+        ['The holding', d.propName],
+        ['Where it lies', h ? h.place : ''],
+        ['Held by', d.holder],
+        ['From what day', d.from],
+        ['For what term', d.term],
+        ['Given for it', d.consider],
+        ['Witnessed by', d.witness],
+        ['Drawn', new Date(d.at).toISOString().slice(0, 10)],
+        d.endedAt ? ['Ended', new Date(d.endedAt).toISOString().slice(0, 10)] : null,
+        d.endNote ? ['How it ended', d.endNote] : null
+      ].filter(Boolean)),
+      Papers.part('Upon these terms', d.terms || D.kindNote(d.kind)),
+      live
+        ? `<div class="warn"><p>This deed may be <b>shown on demand</b> to any officer of the County, and stands
+          against all comers until it is surrendered, expires, or is revoked by the Count.</p>
+          <p>A dispute upon this holding is laid by petition and answered before the court.</p></div>`
+        : `<div class="warn"><p>This deed is <b>${Papers.esc(D.stateName(d.state).toLowerCase())}</b> and gives no
+          right in the holding. It is kept only as a record of what once stood.</p></div>`
+    ].join('');
+
+    res.type('html').send(Papers.doc({
+      kind: 'deed',
+      title: d.propName,
+      sub: 'Deed no. ' + d.no + ' · ' + D.kindName(d.kind) + ' · ' + D.stateName(d.state),
+      lead: `The County of Bruma sets down that <b>${Papers.esc(d.holder)}</b> holds
+        ${Papers.esc(d.propName)}${h && h.place ? ' at ' + Papers.esc(h.place) : ''} by
+        ${Papers.esc(D.kindName(d.kind).toLowerCase())}.`,
+      body: bodyHtml,
+      closing: live ? 'Let them hold it.' : D.stateName(d.state) + '.',
+      motto: 'By hand and by seal',
+      signLine: 'Drawn under the hand of',
+      signedBy: d.drawnByName,
+      signedOf: 'For the County of Bruma',
+      code: paper ? paper.code : '',
+      back: '/property?p=' + encodeURIComponent(d.prop),
+      fileName: 'deed-' + d.no + '-' + d.propName
+    }));
+  });
 };
 
 function holdingFields(p, csrf) {
@@ -192,6 +285,30 @@ function holdingFields(p, csrf) {
   <textarea id="note" name="note" placeholder="Two floors and a cellar. The roof wants mending.">${esc(p.note || '')}</textarea>`;
 }
 
+function deedFields(d) {
+  const o = d || {};
+  return `<div class="fields">
+    <div><label>Who takes it</label><input name="holder" type="text" maxlength="120" value="${esc(o.holder || '')}" required></div>
+    <div><label>What kind of deed</label><select name="kind">${D.KINDS.map(k =>
+      `<option value="${k.id}"${k.id === o.kind ? ' selected' : ''}>${esc(k.name)}</option>`).join('')}</select></div>
+  </div>
+  <div class="fields">
+    <div><label>From what day</label><input name="from" type="text" maxlength="80" value="${esc(o.from || '')}" placeholder="The 1st of Frostfall, 4E 226"></div>
+    <div><label>For what term</label><input name="term" type="text" maxlength="120" value="${esc(o.term || '')}" placeholder="Ten years, or in fee"></div>
+  </div>
+  <div class="fields">
+    <div><label>Rent in septims</label><input name="rent" type="number" min="0" step="1" value="${esc(String(o.rent || 0))}"></div>
+    <div><label>Rendered by</label><select name="per">${D.PERIODS.map(x =>
+      `<option value="${x.id}"${x.id === o.per ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>
+  </div>
+  <div class="fields">
+    <div><label>What was given for it</label><input name="consider" type="text" maxlength="160" value="${esc(o.consider || '')}" placeholder="Four hundred septims, and service at the muster"></div>
+    <div><label>Witnessed by</label><input name="witness" type="text" maxlength="200" value="${esc(o.witness || '')}"></div>
+  </div>
+  <label>Upon what terms</label>
+  <textarea name="terms" rows="3" maxlength="4000" placeholder="To keep the roof and the walls, to render the rent at the quarter, and to answer the muster when it is called.">${esc(o.terms || '')}</textarea>`;
+}
+
 function holdingCard(p, u, csrf) {
   const st = P.STATE_BY_ID[p.state] || P.STATES[1];
   const rents = P.rentsFor(p.id).slice(0, 10);
@@ -210,6 +327,62 @@ function holdingCard(p, u, csrf) {
     ${O.can(u, 'propenter') ? `<a class="btn ghost small" href="/property/${esc(p.id)}/amend">Amend</a>` : ''}
     <a class="btn ghost small" href="/property?map=${esc(p.map || 'county')}">Close</a>
   </div>
+
+  ${(() => {
+    const live = D.liveFor(p.id);
+    const past = D.forHolding(p.id).filter(d => d.state !== 'force');
+    const Papers = require('../lib/papers');
+    const paper = live ? Papers.forRef('deeds', live.id) : null;
+    const may = O.can(u, 'propdeed');
+    return `<h3>The deed</h3>
+    ${live ? `<div class="deedbox">
+      <div class="gaolhead">
+        <span class="gno">Deed no. ${live.no}</span>
+        <span class="tag ${(D.STATE_BY_ID[live.state] || {}).tag || ''}">${esc(D.stateName(live.state))}</span>
+        <span class="gdays">${esc(D.kindName(live.kind))}</span>
+      </div>
+      <p style="margin:6px 0 10px"><b>${esc(live.holder)}</b> holds this${live.from ? ', from ' + esc(live.from) : ''}${
+        live.term ? ', for ' + esc(live.term) : ''}${live.rent ? ', at ' + V.septims(live.rent) + ' septims by ' + esc(D.periodName(live.per)) : ', at no rent'}.</p>
+      ${live.terms ? `<p style="white-space:pre-wrap;color:var(--muted);margin:0 0 10px">${esc(live.terms)}</p>` : ''}
+      <div class="btnrow">
+        <a class="btn ghost small" href="/property/deeds/${esc(live.id)}/doc" target="_blank" rel="noopener">The deed to give out ↗</a>
+        ${paper ? `<a class="btn ghost small" href="/verify?code=${esc(paper.code)}">${esc(paper.code)}</a>` : ''}
+      </div>
+      ${may ? `<details class="fold" style="margin-top:12px"><summary>Amend or end this deed</summary>
+        <form method="post" action="/property/deeds/${esc(live.id)}">${V.hidden(csrf)}
+          <input type="hidden" name="back" value="/property?map=${esc(p.map || 'county')}&p=${esc(p.id)}">
+          ${deedFields(live)}
+          <div class="btnrow"><button class="btn small" type="submit">Set it down</button></div>
+        </form>
+        <form method="post" action="/property/deeds/${esc(live.id)}/end" class="stack">${V.hidden(csrf)}
+          <input type="hidden" name="back" value="/property?map=${esc(p.map || 'county')}&p=${esc(p.id)}">
+          <div class="fields">
+            <div><label>How it ends</label><select name="state">${D.STATES.filter(x => x.id !== 'force').map(x =>
+              `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></div>
+            <div><label>Why</label><input name="note" type="text" maxlength="1000" placeholder="Surrendered to the County"></div>
+          </div>
+          <div class="btnrow"><button class="btn danger small" type="submit">End the deed</button></div>
+        </form>
+      </details>` : ''}
+    </div>` : `<p class="hint">No deed stands upon this holding. Whoever is written as holding it holds it by the County’s word alone.</p>`}
+    ${may ? `<details class="fold" style="margin-top:12px"><summary>${live ? 'Draw a new deed, superseding this one' : 'Draw a deed'}</summary>
+      <form method="post" action="/property/deeds">${V.hidden(csrf)}
+        <input type="hidden" name="prop" value="${esc(p.id)}">
+        <input type="hidden" name="back" value="/property?map=${esc(p.map || 'county')}&p=${esc(p.id)}">
+        ${deedFields({ holder: p.holder, rent: p.rent })}
+        <div class="btnrow"><button class="btn go" type="submit">Draw the deed</button></div>
+      </form>
+    </details>` : ''}
+    ${past.length ? `<details class="fold" style="margin-top:12px"><summary>Deeds that went before · ${past.length}</summary>
+      ${V.table([
+        { head: 'No.', num: true, cell: d => `<a href="/property/deeds/${esc(d.id)}/doc" target="_blank" rel="noopener">${d.no}</a>` },
+        { head: 'Kind', cell: d => esc(D.kindName(d.kind)) },
+        { head: 'Held by', cell: d => esc(d.holder) },
+        { head: 'How it ended', cell: d => `<span class="tag ${(D.STATE_BY_ID[d.state] || {}).tag || ''}">${esc(D.stateName(d.state))}</span>` },
+        { head: 'When', cell: d => esc(V.when(d.endedAt || d.at)) }
+      ], past)}
+    </details>` : ''}`;
+  })()}
 
   ${O.can(u, 'propdeed') ? `<h3>Record a rent rendered</h3>
   <form method="post" action="/property/${esc(p.id)}/rent">${V.hidden(csrf)}
