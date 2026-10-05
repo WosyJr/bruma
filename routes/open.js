@@ -417,7 +417,7 @@ ${faces.map(f => `<section class="card guildface">
     : 'The hall has posted nothing upon ' + esc(theMap.name.toLowerCase()) + '.'}</p>
 
   ${kinds.length ? `<div class="maplegend">${kinds.map(k => `<span class="leg">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${GM.kindPath(k.id)}" fill="none"
+    <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="${GM.kindPath(k.id)}" fill="none"
       stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>
     ${esc(k.name)}</span>`).join('')}</div>` : ''}
 
