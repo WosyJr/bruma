@@ -19,6 +19,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     const missed = W.missedThisWeek();
     const notes = W.notes().slice(0, 6);
     const high = W.hoursHigh(week);
+    const mayRoster = O.can(u, 'watchroster');
     const weekTotal = week.reduce((n, r) => n + r.minutes, 0);
     const clock = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
     const sameDay = t => new Date(t).toDateString() === new Date().toDateString();
@@ -80,13 +81,20 @@ ${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : '
     <section class="card">
       <div class="eyebrow" style="margin-bottom:12px">Stood today</div>
       ${today.length ? `<div class="tablewrap"><table class="watchtable"><thead><tr>
-        <th>Guard</th><th>Post</th><th>On</th><th>Off</th><th class="num">Stood</th></tr></thead><tbody>
+        <th>Guard</th><th>Post</th><th>On</th><th>Off</th><th class="num">Stood</th>${
+          mayRoster ? '<th class="num"></th>' : ''}</tr></thead><tbody>
         ${today.map(sh => `<tr${sh.off ? '' : ' class="live"'}>
           <td><b>${esc(sh.name)}</b></td>
           <td>${esc(W.postName(sh.post))}</td>
           <td>${esc(stamp(sh.on))}</td>
-          <td>${sh.off ? esc(stamp(sh.off)) : '<span class="onnow">— on watch</span>'}</td>
+          <td>${sh.off
+            ? esc(stamp(sh.off)) + (sh.offByName ? `<br><span class="byhand">by ${esc(sh.offByName)}</span>` : '')
+            : '<span class="onnow">— on watch</span>'}</td>
           <td class="num">${esc(V.hours(W.minutesOf(sh)))}</td>
+          ${mayRoster ? `<td class="num">${!sh.off && sh.who !== u.username
+            ? `<form method="post" action="/watch/off/${esc(sh.id)}" class="inline">${V.hidden(req.session.csrf)}
+                 <button class="btn ghost small" type="submit">Clock off</button></form>`
+            : ''}</td>` : ''}
         </tr>`).join('')}
       </tbody></table></div>
       <p class="hint" style="margin-top:12px">A guard who forgets to clock off is closed out at the end of the watch
@@ -127,8 +135,13 @@ ${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : '
             p.state === 'manned' ? esc(p.who)
             : p.state === 'returned' ? 'patrol returned ' + esc(clock(p.last))
             : p.last ? 'nobody since ' + esc(clock(p.last)) : 'nobody yet'}</i></div>
-          <span class="tag ${p.state === 'manned' ? 'in' : p.state === 'returned' ? '' : 'out'}">${
-            p.state === 'manned' ? 'Manned' : p.state === 'returned' ? 'Returned' : 'Empty'}</span>
+          <span class="pstr">
+            <span class="tag ${p.state === 'manned' ? 'in' : p.state === 'returned' ? '' : 'out'}">${
+              p.state === 'manned' ? 'Manned' : p.state === 'returned' ? 'Returned' : 'Empty'}</span>
+            ${mayRoster && p.state === 'manned' ? duty.filter(d => d.post === p.id && d.who !== u.username).map(d =>
+              `<form method="post" action="/watch/off/${esc(d.id)}" class="inline">${V.hidden(req.session.csrf)}
+                 <button class="btn ghost small" type="submit" title="Clock ${esc(d.name)} off">Clock off</button></form>`).join('') : ''}
+          </span>
         </div>`).join('')}
       </div>
     </section>
@@ -173,6 +186,14 @@ ${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : '
     res.redirect(back(req, '/watch'));
   }));
 
+  app.post('/watch/off/:id', checkCsrf, need('watchroster'), wrap((req, res) => {
+    try {
+      const row = W.clockOffOther(req.params.id, req.body.note, req.user);
+      req.session.flash = { text: row.name + ' is clocked off. They stood ' + V.hours(row.minutes) + '.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect(back(req, '/watch'));
+  }));
+
   app.get('/watch/log', need('watchlog'), (req, res) => {
     const who = String(req.query.who || '');
     const post = String(req.query.post || '');
@@ -201,10 +222,17 @@ ${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : '
       { head: 'Guard', cell: r => esc(r.name) + (r.struck ? ' <span class="tag out">struck</span>' : '') },
       { head: 'Post', cell: r => esc(W.postName(r.post)) },
       { head: 'On', cell: r => esc(V.when(r.on)) },
-      { head: 'Off', cell: r => r.off ? esc(V.when(r.off)) : '<span class="tag on">standing</span>' },
+      { head: 'Off', cell: r => r.off
+          ? esc(V.when(r.off)) + (r.offByName ? '<br><span class="byhand">by ' + esc(r.offByName) + '</span>' : '')
+          : '<span class="tag on">standing</span>' },
       { head: 'Stood', num: true, cell: r => r.off ? esc(V.hours(r.minutes)) : '' },
       { head: 'Set down', cell: r => esc(r.note || '') },
-      { head: '', cell: r => O.can(req.user, 'watchamend') ? `<a class="btn ghost small" href="/watch/shift/${esc(r.id)}">Amend</a>` : '' }
+      { head: '', cell: r => [
+          !r.off && O.can(req.user, 'watchroster')
+            ? `<form method="post" action="/watch/off/${esc(r.id)}" class="inline">${V.hidden(req.session.csrf)}<input type="hidden" name="back" value="/watch/log"><button class="btn ghost small" type="submit">Clock off</button></form>`
+            : '',
+          O.can(req.user, 'watchamend') ? `<a class="btn ghost small" href="/watch/shift/${esc(r.id)}">Amend</a>` : ''
+        ].filter(Boolean).join(' ') }
     ], rows) : V.empty('Nothing stands in the log for that.')}
   <p class="hint" style="margin-top:12px">${rows.length} ${rows.length === 1 ? 'shift' : 'shifts'} shown.</p>
 </section>`;

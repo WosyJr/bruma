@@ -58,6 +58,33 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
 
 <div class="cols">
   <div>
+    ${mayKeep ? `<details class="bigfold">
+      <summary>Commit a person to the gaol</summary>
+      <form method="post" action="/gaol">${V.hidden(req.session.csrf)}
+        <div class="formgrid">
+          <label class="f2"><span>Who is held</span>
+            <input name="who" type="text" maxlength="120" required placeholder="A name"></label>
+          <label><span>On what ground</span>
+            <select name="why">${G.GROUNDS.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select></label>
+          <label><span>Held where</span>
+            <select name="place">${G.PLACES.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>
+          <label class="f2"><span>Upon which matter</span>
+            <select name="matterId"><option value="">\u2014 none \u2014</option>${
+              matters.map(m => `<option value="${esc(m.id)}">no. ${esc(m.no)} \u2014 ${esc(m.title)}</option>`).join('')}</select></label>
+          <label class="f2"><span>Taken where, and by whom</span>
+            <input name="taken" type="text" maxlength="160" placeholder="At the North Gate, by Guardsman Hjorm"></label>
+          <label><span>Term, if one is set</span>
+            <input name="term" type="text" maxlength="160" placeholder="Thirty days"></label>
+          <label><span>Comes up on</span>
+            <input name="due" type="text" maxlength="80" placeholder="The 12th of Sun\u2019s Dawn"></label>
+          <label><span>And on what real day</span>
+            <input name="dueIso" type="date"></label>
+          <label class="f4"><span>Set down why they are held</span>
+            <textarea name="account" rows="3" maxlength="4000" required></textarea></label>
+        </div>
+        <div class="btnrow"><button class="btn go" type="submit">Commit them</button></div>
+      </form>
+    </details>` : ''}
     <section class="card tight">
       <h3 style="margin:0 0 4px">Held now</h3>
       <p class="hint" style="margin:0">${inside.length ? inside.length + (inside.length === 1 ? ' person is held.' : ' people are held.') : 'Nobody is held. The cells are empty.'}</p>
@@ -82,31 +109,6 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
       </div>
     </section>
 
-    ${mayKeep ? `<section class="card">
-      <h3 style="margin-top:0">Commit a person</h3>
-      <form method="post" action="/gaol">${V.hidden(req.session.csrf)}
-        <label for="who">Who is held</label>
-        <input id="who" name="who" type="text" maxlength="120" required placeholder="A name">
-        <label for="why">On what ground</label>
-        <select id="why" name="why">${G.GROUNDS.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select>
-        <label for="place">Held where</label>
-        <select id="place" name="place">${G.PLACES.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
-        <label for="matterId">Upon which matter</label>
-        <select id="matterId" name="matterId"><option value="">— none —</option>${
-          matters.map(m => `<option value="${esc(m.id)}">no. ${esc(m.no)} — ${esc(m.title)}</option>`).join('')}</select>
-        <label for="taken">Taken where, and by whom</label>
-        <input id="taken" name="taken" type="text" maxlength="160" placeholder="At the North Gate, by Guardsman Hjorm">
-        <label for="term">Term, if one is set</label>
-        <input id="term" name="term" type="text" maxlength="160" placeholder="Thirty days">
-        <label for="due">Comes up on</label>
-        <input id="due" name="due" type="text" maxlength="80" placeholder="The 12th of Sun's Dawn">
-        <label for="dueIso">And on what real day</label>
-        <input id="dueIso" name="dueIso" type="date">
-        <label for="account">Set down why they are held</label>
-        <textarea id="account" name="account" rows="4" maxlength="4000" required></textarea>
-        <div class="btnrow"><button class="btn go" type="submit">Commit them</button></div>
-      </form>
-    </section>` : ''}
 
     <section class="card">
       <h3 style="margin-top:0">How the gaol is kept</h3>

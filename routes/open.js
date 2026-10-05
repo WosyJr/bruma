@@ -461,20 +461,7 @@ ${O.GUILDS.map(g => {
   </form>
 </section>
 
-<section class="card">
-  <h3 style="margin-top:0">The Pale Pass</h3>
-  <p class="lede">What is set here shows on the public notice of the pass.</p>
-  <form method="post" action="/proclaim/pass">${V.hidden(req.session.csrf)}
-    <label for="state">How the pass stands</label>
-    <select id="state" name="state">
-      ${Pr.STATES.map(s => `<option value="${s.id}"${p.state === s.id ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}
-    </select>
-    <label for="note">What travellers should know</label>
-    <textarea id="note" name="note" style="min-height:90px" placeholder="Snow to the knee above the second waystation. Carts are turned back; riders and foot may go.">${esc(p.note || '')}</textarea>
-    <div class="btnrow"><button class="btn" type="submit">Set the notice</button>
-    <a class="btn ghost" href="/pass">See the public notice</a></div>
-  </form>
-</section>
+${V.passSetter(req.session.csrf, '/proclaim')}
 
 <section class="card">
   <h3 style="margin-top:0">What has been proclaimed</h3>
@@ -503,6 +490,15 @@ ${O.GUILDS.map(g => {
     Pr.setPass(req.body, req.user);
     req.session.flash = { text: 'The notice of the pass is set.' };
     res.redirect('/proclaim');
+  }));
+
+  app.post('/pass/state', checkCsrf, need('proclaim'), wrap((req, res) => {
+    const was = Pr.pass();
+    const body = { state: req.body.state, note: req.body.note === undefined ? was.note : req.body.note };
+    Pr.setPass(body, req.user);
+    const now = Pr.STATE_BY_ID[Pr.pass().state] || Pr.STATES[0];
+    req.session.flash = { text: now.say + '. The public notice is changed.' };
+    res.redirect(back(req, '/hall'));
   }));
 
   app.post('/proclaim/:id/strike', checkCsrf, need('proclaim'), wrap((req, res) => {

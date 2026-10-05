@@ -783,3 +783,18 @@ details.rmem .btnrow{margin:2px 0 0}
   flex-direction:row !important;align-items:center;gap:11px !important;flex-wrap:wrap}
 .strikerow .hint{margin:0;font-size:11.5px;flex:1 1 130px;line-height:1.4}
 .strikebtns{display:flex;gap:6px;flex:none;flex-wrap:wrap}
+
+.byhand{display:block;font-size:11px;letter-spacing:.05em;color:var(--dim);font-style:italic;margin-top:2px}
+.pstr{display:flex;align-items:center;gap:7px;flex:none;flex-wrap:wrap;justify-content:flex-end}
+table.watchtable td form{margin:0}
+
+.maptabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.maptabs a{font-size:13.5px;letter-spacing:.05em;color:var(--muted);text-decoration:none;
+  border:1px solid var(--edge);border-radius:3px;padding:6px 12px;transition:all .18s ease}
+.maptabs a:hover{border-color:var(--edge2);color:var(--bright)}
+.maptabs a.on{border-color:var(--accent);color:var(--bright);background:rgba(224,154,62,.1)}
+.maptabs a b{color:var(--eyebrow);font-weight:500;margin-left:5px}
+.maptabs .btn{margin-left:auto}
+.markcard{margin-top:18px;border:1px solid var(--edge2);border-left:2px solid var(--accent);
+  border-radius:0 3px 3px 0;padding:15px 18px;background:#201810}
+.markcard .formgrid{margin-top:12px}

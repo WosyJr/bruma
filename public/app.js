@@ -9,10 +9,13 @@
   var note = document.getElementById('mapnote');
   var placing = false;
 
+  var param = map.getAttribute('data-param') || 'p';
+  var anchor = map.getAttribute('data-hash') || 'map';
+
   function url(id) {
     var u = new URL(window.location.href);
-    u.searchParams.set('p', id);
-    u.hash = 'map';
+    u.searchParams.set(param, id);
+    u.hash = anchor;
     return u.toString();
   }
 
@@ -27,6 +30,7 @@
   function stop() {
     placing = false;
     map.id = 'map';
+    if (cancel && cancel.parentNode && cancel.parentNode.className === 'maptabs') cancel.style.display = 'none';
     if (note) note.innerHTML = 'Click a pin to read it. Press <b>Enter a holding</b> above to set a new pin.';
     if (form) form.style.display = 'none';
   }
@@ -35,7 +39,8 @@
     start.addEventListener('click', function () {
       placing = true;
       map.id = 'placing';
-      if (note) note.innerHTML = '<b>Click the map</b> where the holding stands.';
+      if (cancel) cancel.style.display = '';
+      if (note) note.innerHTML = '<b>Click the map</b> where it lies.';
       map.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   }

@@ -4,6 +4,7 @@ const G = require('../lib/guilds');
 const Lad = require('../lib/guildladder');
 const T = require('../lib/treasury');
 const Tax = require('../lib/taxes');
+const GM = require('../lib/guildmap');
 
 const esc = V.esc;
 
@@ -96,6 +97,33 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     const rend = Lad.renders(g.id);
     const open = G.openContracts(g.id);
     const struck = G.struckRoll(g.id);
+    const mapId = GM.MAP_BY_ID[req.query.map] ? req.query.map : 'county';
+    const theMap = GM.MAP_BY_ID[mapId];
+    const marks = GM.all(g.id, mapId);
+    const byMap = GM.countByMap(g.id);
+    const msum = GM.summary(g.id);
+    const sel = String(req.query.m || '');
+    const chosen = sel ? GM.get(sel) : null;
+    const gkinds = GM.kindsFor(g.id);
+
+    const gpin = (m, on) => {
+      const ring = GM.ringOf(m.state);
+      return `<button type="button" class="pin${on ? ' on' : ''}" style="left:${m.x}%;top:${m.y}%" data-id="${esc(m.id)}"
+        title="${esc(m.name)} \u2014 ${esc(GM.kindName(g.id, m.kind))}">
+        <svg viewBox="0 0 28 36" aria-hidden="true">
+          <circle class="ring" cx="14" cy="13" r="13" fill="none" stroke="${ring}" stroke-width="2" opacity=".55"/>
+          <path d="M14 35C14 35 25 22.5 25 13A11 11 0 1 0 3 13c0 9.5 11 22 11 22z" fill="#1F1710" stroke="${ring}" stroke-width="2"/>
+          <g transform="translate(7 6) scale(0.5)" fill="none" stroke="${ring}" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round">
+            <path d="${GM.kindPath(m.kind)}"/>
+          </g>
+        </svg>
+        <span class="pinlabel" aria-hidden="true">
+          <b>${esc(m.name)}</b>
+          <i>${esc(GM.kindName(g.id, m.kind))}</i>
+          <u>${esc(GM.stateName(m.state))}${m.who ? ' \u00b7 ' + esc(m.who) : ''}</u>
+        </span>
+      </button>`;
+    };
     const taken = G.contracts(g.id).filter(c => c.state === 'taken').slice(0, 8);
 
     const mayKeep = O.can(u, 'guildsee') || (O.can(u, 'guildown') && O.guildOf(u) === g.id);
@@ -166,6 +194,84 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
           ${seat.duties && seat.duties[d.name] ? `<em>${esc(seat.duties[d.name])}</em>` : '<em class="vacant">Vacant</em>'}
         </div>`).join('')}
       </div>
+    </section>
+
+    <section class="card" id="map-section">
+      <div class="eyebrow" style="margin-bottom:6px">The hall’s map</div>
+      <p class="hint" style="margin:0 0 14px">What this hall knows of the ground: ${
+        gkinds.slice(0, 3).map(k => esc(k.name.toLowerCase())).join(', ')} and anything else worth setting down.
+      Only this hall and the County see it.</p>
+      <div class="maptabs">
+        ${GM.MAPS.map(m => `<a href="/guilds/${esc(g.id)}?map=${m.id}#map-section"${
+          m.id === mapId ? ' class="on"' : ''}>${esc(m.name)} <b>${byMap[m.id] || 0}</b></a>`).join('')}
+        ${mayKeep ? `<button class="btn go small" type="button" id="startplace">Set a mark</button>
+        <button class="btn ghost small" type="button" id="cancelplace" style="display:none">Never mind</button>` : ''}
+      </div>
+      <div class="mapwrap" id="map" data-place="${mayKeep ? '1' : ''}" data-param="m" data-hash="map-section">
+        <img src="${esc(theMap.file)}" alt="A map of ${esc(theMap.name)}" id="mapimg">
+        ${marks.map(m => gpin(m, m.id === sel)).join('')}
+      </div>
+      <p class="mapnote" id="mapnote">${mayKeep
+        ? 'Click a mark to read it. Press <b>Set a mark</b> to put a new one on the map.'
+        : 'Click a mark to read it.'}</p>
+
+      ${mayKeep ? `<form method="post" action="/guilds/${esc(g.id)}/marks" id="enterform" style="display:none;margin-top:18px">${V.hidden(req.session.csrf)}
+        <input type="hidden" name="map" value="${esc(mapId)}">
+        <input type="hidden" name="x" id="newx"><input type="hidden" name="y" id="newy">
+        <p class="hint" id="atwhere" style="margin:0 0 12px"></p>
+        <div class="formgrid">
+          <label class="f2"><span>What it is called</span>
+            <input id="name" name="name" type="text" maxlength="120" required placeholder="A name for it"></label>
+          <label><span>What kind</span>
+            <select name="kind">${gkinds.map(k => `<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select></label>
+          <label><span>How it stands</span>
+            <select name="state">${GM.STATES.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></label>
+          <label class="f2"><span>Whose hand it is in</span>
+            <input name="who" type="text" maxlength="120" placeholder="Rolof Einarsson"></label>
+          <label class="f2"><span>Anything further</span>
+            <input name="note" type="text" maxlength="1000" placeholder="Anything the hall should know about it."></label>
+        </div>
+        <div class="btnrow"><button class="btn go" type="submit">Set it down</button></div>
+      </form>` : ''}
+
+      ${chosen ? `<div class="markcard">
+        <div class="gaolhead">
+          <span class="gno">Mark no. ${chosen.no}</span>
+          <span class="tag ${(GM.STATE_BY_ID[chosen.state] || {}).tag || ''}">${esc(GM.stateName(chosen.state))}</span>
+          <span class="gdays">${esc(GM.mapName(chosen.map))}</span>
+        </div>
+        <h3 style="margin:4px 0 2px">${esc(chosen.name)}</h3>
+        <p class="hint" style="margin:0 0 10px">${esc(GM.kindName(g.id, chosen.kind))}${
+          chosen.who ? ' \u00b7 ' + esc(chosen.who) : ''} \u00b7 set by ${esc(chosen.byName)}</p>
+        ${chosen.note ? `<p style="margin:0 0 12px;color:var(--muted)">${esc(chosen.note)}</p>` : ''}
+        ${mayKeep ? `<form method="post" action="/guilds/${esc(g.id)}/marks/${esc(chosen.id)}">${V.hidden(req.session.csrf)}
+          <input type="hidden" name="map" value="${esc(mapId)}">
+          <div class="formgrid">
+            <label class="f2"><span>What it is called</span>
+              <input name="name" type="text" maxlength="120" value="${esc(chosen.name)}"></label>
+            <label><span>What kind</span>
+              <select name="kind">${gkinds.map(k => `<option value="${k.id}"${k.id === chosen.kind ? ' selected' : ''}>${esc(k.name)}</option>`).join('')}</select></label>
+            <label><span>How it stands</span>
+              <select name="state">${GM.STATES.map(x => `<option value="${x.id}"${x.id === chosen.state ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
+            <label class="f2"><span>Whose hand</span>
+              <input name="who" type="text" maxlength="120" value="${esc(chosen.who)}"></label>
+            <label class="f2"><span>Anything further</span>
+              <input name="note" type="text" maxlength="1000" value="${esc(chosen.note)}"></label>
+          </div>
+          <div class="btnrow"><button class="btn small" type="submit">Set it down</button></div>
+        </form>
+        <form method="post" action="/guilds/${esc(g.id)}/marks/${esc(chosen.id)}/strike" class="inline">${V.hidden(req.session.csrf)}
+          <input type="hidden" name="map" value="${esc(mapId)}">
+          <button class="btn danger small" type="submit">Take it off the map</button></form>` : ''}
+      </div>` : ''}
+
+      ${marks.length ? `<div class="tablewrap capped" style="margin-top:18px">${V.table([
+        { head: 'No.', num: true, cell: m => m.no },
+        { head: 'What', cell: m => `<a href="/guilds/${esc(g.id)}?map=${esc(m.map)}&m=${esc(m.id)}#map-section">${esc(m.name)}</a>` },
+        { head: 'Kind', cell: m => esc(GM.kindName(g.id, m.kind)) },
+        { head: 'Whose hand', cell: m => esc(m.who) || '<span class="dash">\u2014</span>' },
+        { head: 'Standing', cell: m => `<span class="tag ${(GM.STATE_BY_ID[m.state] || {}).tag || ''}">${esc(GM.stateName(m.state))}</span>` }
+      ], marks)}</div>` : `<p class="hint" style="margin-top:16px">Nothing is marked upon ${esc(theMap.name.toLowerCase())} yet.</p>`}
     </section>
 
     <section class="card" id="charter">
@@ -386,6 +492,39 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
       req.session.flash = { text: c.state === 'taken' ? c.takenBy + ' has taken it.' : 'The contract is set down as ' + c.state + '.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/guilds/' + req.params.id + '#contracts');
+  }));
+
+  app.post('/guilds/:id/marks', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+    const backTo = '/guilds/' + req.params.id + '?map=' + encodeURIComponent(req.body.map || 'county') + '#map-section';
+    try {
+      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That map is not yours to keep.');
+      const m = GM.place(req.params.id, req.body, req.user);
+      req.session.flash = { text: m.name + ' is set upon the map of ' + GM.mapName(m.map).toLowerCase() + '.' };
+      return res.redirect('/guilds/' + req.params.id + '?map=' + encodeURIComponent(m.map) + '&m=' + encodeURIComponent(m.id) + '#map-section');
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect(backTo);
+  }));
+
+  app.post('/guilds/:id/marks/:mid', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+    try {
+      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That map is not yours to keep.');
+      const m = GM.get(req.params.mid);
+      if (!m || m.guild !== req.params.id) throw new Error('No such mark upon this map.');
+      GM.amend(req.params.mid, req.body, req.user);
+      req.session.flash = { text: 'The mark is amended.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/guilds/' + req.params.id + '?map=' + encodeURIComponent(req.body.map || 'county') + '&m=' + encodeURIComponent(req.params.mid) + '#map-section');
+  }));
+
+  app.post('/guilds/:id/marks/:mid/strike', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+    try {
+      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That map is not yours to keep.');
+      const m = GM.get(req.params.mid);
+      if (!m || m.guild !== req.params.id) throw new Error('No such mark upon this map.');
+      GM.strike(req.params.mid);
+      req.session.flash = { text: m.name + ' is taken off the map.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/guilds/' + req.params.id + '?map=' + encodeURIComponent(req.body.map || 'county') + '#map-section');
   }));
 
   app.post('/guilds/:id/seat', checkCsrf, need('guildcharter'), wrap((req, res) => {
