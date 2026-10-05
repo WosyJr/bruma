@@ -117,8 +117,11 @@ app.use((err, req, res, next) => {
 U.bootstrap();
 O.all();
 try {
-  const n = require('./lib/archive').seedLex();
+  const Arch = require('./lib/archive');
+  const n = Arch.seedLex();
   if (n) console.log('Laid the Lex Brumae into the archive: ' + n + ' titles.');
+  const mended = Arch.mendLex();
+  if (mended.length) console.log('Amended the Lex Brumae: ' + mended.join(', ') + '.');
 } catch (e) { console.error('Could not seed the Lex Brumae:', e.message); }
 
 if (require.main === module) {

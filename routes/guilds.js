@@ -120,7 +120,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
         <span class="pinlabel" aria-hidden="true">
           <b>${esc(m.name)}</b>
           <i>${esc(GM.kindName(g.id, m.kind))}</i>
-          <u>${esc(GM.stateName(m.state))}${m.who ? ' \u00b7 ' + esc(m.who) : ''}</u>
+          <u>${esc(GM.stateName(m.state))}${m.who ? ' \u00b7 ' + esc(m.who) : ''}${m.hidden ? ' \u00b7 off the public map' : ''}</u>
         </span>
       </button>`;
     };
@@ -200,14 +200,16 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
       <div class="eyebrow" style="margin-bottom:6px">The hall’s map</div>
       <p class="hint" style="margin:0 0 14px">What this hall knows of the ground: ${
         gkinds.slice(0, 3).map(k => esc(k.name.toLowerCase())).join(', ')} and anything else worth setting down.
-      Only this hall and the County see it.</p>
+      A mark stands on the <a href="/the-guilds/${esc(g.id)}">public map</a> unless the hall keeps it back —
+      and the public is never shown whose hand it is in, nor the note.${
+        msum.kept ? ` <b>${msum.kept}</b> ${msum.kept === 1 ? 'mark is' : 'marks are'} kept back.` : ''}</p>
       <div class="maptabs">
         ${GM.MAPS.map(m => `<a href="/guilds/${esc(g.id)}?map=${m.id}#map-section"${
           m.id === mapId ? ' class="on"' : ''}>${esc(m.name)} <b>${byMap[m.id] || 0}</b></a>`).join('')}
         ${mayKeep ? `<button class="btn go small" type="button" id="startplace">Set a mark</button>
         <button class="btn ghost small" type="button" id="cancelplace" style="display:none">Never mind</button>` : ''}
       </div>
-      <div class="mapwrap" id="map" data-place="${mayKeep ? '1' : ''}" data-param="m" data-hash="map-section">
+      <div class="mapwrap" id="map" data-map="${esc(mapId)}" data-place="${mayKeep ? '1' : ''}" data-param="m" data-hash="map-section">
         <img src="${esc(theMap.file)}" alt="A map of ${esc(theMap.name)}" id="mapimg">
         ${marks.map(m => gpin(m, m.id === sel)).join('')}
       </div>
@@ -231,6 +233,9 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
           <label class="f2"><span>Anything further</span>
             <input name="note" type="text" maxlength="1000" placeholder="Anything the hall should know about it."></label>
         </div>
+        <input type="hidden" name="hiddenset" value="1">
+        <label class="tick"><input type="checkbox" name="hidden" value="1">
+          <span>Keep this off the public map <i>— the hall and the County see it, nobody else</i></span></label>
         <div class="btnrow"><button class="btn go" type="submit">Set it down</button></div>
       </form>` : ''}
 
@@ -238,6 +243,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
         <div class="gaolhead">
           <span class="gno">Mark no. ${chosen.no}</span>
           <span class="tag ${(GM.STATE_BY_ID[chosen.state] || {}).tag || ''}">${esc(GM.stateName(chosen.state))}</span>
+          ${chosen.hidden ? '<span class="tag">Off the public map</span>' : ''}
           <span class="gdays">${esc(GM.mapName(chosen.map))}</span>
         </div>
         <h3 style="margin:4px 0 2px">${esc(chosen.name)}</h3>
@@ -258,6 +264,9 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
             <label class="f2"><span>Anything further</span>
               <input name="note" type="text" maxlength="1000" value="${esc(chosen.note)}"></label>
           </div>
+          <input type="hidden" name="hiddenset" value="1">
+          <label class="tick"><input type="checkbox" name="hidden" value="1"${chosen.hidden ? ' checked' : ''}>
+            <span>Keep this off the public map <i>— the hall and the County see it, nobody else</i></span></label>
           <div class="btnrow"><button class="btn small" type="submit">Set it down</button></div>
         </form>
         <form method="post" action="/guilds/${esc(g.id)}/marks/${esc(chosen.id)}/strike" class="inline">${V.hidden(req.session.csrf)}
@@ -270,7 +279,8 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
         { head: 'What', cell: m => `<a href="/guilds/${esc(g.id)}?map=${esc(m.map)}&m=${esc(m.id)}#map-section">${esc(m.name)}</a>` },
         { head: 'Kind', cell: m => esc(GM.kindName(g.id, m.kind)) },
         { head: 'Whose hand', cell: m => esc(m.who) || '<span class="dash">\u2014</span>' },
-        { head: 'Standing', cell: m => `<span class="tag ${(GM.STATE_BY_ID[m.state] || {}).tag || ''}">${esc(GM.stateName(m.state))}</span>` }
+        { head: 'Standing', cell: m => `<span class="tag ${(GM.STATE_BY_ID[m.state] || {}).tag || ''}">${esc(GM.stateName(m.state))}</span>` },
+        { head: 'Public', cell: m => m.hidden ? '<span class="dash">kept back</span>' : 'shown' }
       ], marks)}</div>` : `<p class="hint" style="margin-top:16px">Nothing is marked upon ${esc(theMap.name.toLowerCase())} yet.</p>`}
     </section>
 

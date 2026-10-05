@@ -454,7 +454,9 @@ details.fold[open] > summary{border-bottom:1px solid var(--edge);margin-bottom:1
   border-radius:50%;border:1px solid rgba(244,212,162,.5);pointer-events:none;opacity:0;
   animation:puff .74s ease-out both}
 
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px;margin-bottom:22px}
 .board.one{grid-template-columns:minmax(0,1fr)}
+@media (max-width:560px){.board{grid-template-columns:minmax(0,1fr)}}
 .rows.tight .row{padding:8px 0}
 .gaolcard,.petcard{margin:0}
 .gaolcard.over{border-left:3px solid #B9452F}
@@ -814,3 +816,61 @@ table.watchtable td form{margin:0}
 .mapwrap[data-map="city"] img{filter:sepia(.55) brightness(1.14) contrast(.98) saturate(1.05) hue-rotate(-6deg)}
 .mapwrap[data-map="city"]:hover img{filter:sepia(.46) brightness(1.21) contrast(1.01) saturate(1.08) hue-rotate(-6deg)}
 .mapwrap[data-map="city"]::after{box-shadow:inset 0 0 70px rgba(10,8,6,.4)}
+
+.tick{display:flex;align-items:flex-start;gap:10px;margin:14px 0 2px;cursor:pointer;
+  font-family:var(--sans);font-size:14px;color:var(--ink);line-height:1.5}
+.tick input[type=checkbox]{appearance:none;-webkit-appearance:none;margin:1px 0 0;flex:0 0 auto;
+  width:18px;height:18px;border:1px solid var(--edge2);border-radius:3px;background:#120D09;
+  cursor:pointer;position:relative;transition:border-color .16s,background .16s}
+.tick input[type=checkbox]:hover{border-color:var(--accent)}
+.tick input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+.tick input[type=checkbox]:checked::after{content:"";position:absolute;left:5px;top:1px;
+  width:5px;height:10px;border:solid #17110C;border-width:0 2px 2px 0;transform:rotate(42deg)}
+.tick input[type=checkbox]:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+.tick i{font-style:normal;color:var(--faint)}
+
+.guildface{margin:0;display:flex;flex-direction:column}
+.guildface h3{margin:6px 0 14px;font-size:25px;font-family:var(--serif);font-weight:500}
+.guildface h3 a{text-decoration:none;color:var(--bright)}
+.guildface h3 a:hover{color:var(--linkhi)}
+.guildface .rows{flex:1 1 auto}
+.guildface .btnrow{margin:16px 0 0}
+
+.maplegend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;padding-top:14px;
+  border-top:1px solid var(--edge)}
+.leg{display:inline-flex;align-items:center;gap:7px;font-family:var(--sans);font-size:13px;
+  color:var(--muted);letter-spacing:.01em}
+.leg svg{width:17px;height:17px;flex:0 0 auto;color:var(--eyebrow)}
+
+.repcard{margin:0}
+.repcard h3{font-size:22px;font-family:var(--serif);font-weight:500}
+.repcard h3 a{text-decoration:none;color:var(--bright)}
+.repcard h3 a:hover{color:var(--linkhi)}
+.repsnip{margin:0;color:var(--muted);line-height:1.62;font-size:15px}
+
+.pchips{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 12px}
+.pchip{display:inline-flex;align-items:baseline;gap:7px;padding:4px 10px;border-radius:2px;
+  border:1px solid var(--edge);background:#120D09;font-family:var(--sans);font-size:11.5px;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+.pchip b{font-size:13px;letter-spacing:.01em;text-transform:none;color:var(--ink);font-weight:500}
+.pchip.out{border-color:#6B3426}
+.pchip.out b{color:#E8A796}
+.pchip.in{border-color:#3C5A42}
+.pchip.in b{color:#A7CDB0}
+
+.personrows{display:flex;flex-direction:column;gap:9px;margin:10px 0 4px}
+.prow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr);gap:10px}
+.prow input,.prow select{margin:0;width:100%}
+@media (max-width:560px){.prow{grid-template-columns:minmax(0,1fr)}}
+
+.repbody{white-space:pre-wrap;line-height:1.74;font-size:16.5px;color:var(--ink)}
+
+.addendum{position:relative;border-left:2px solid var(--edge2);padding:2px 0 2px 18px;margin:0 0 22px}
+.addendum:last-of-type{margin-bottom:0}
+.addendum .ahead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.addendum .ahead b{font-family:var(--serif);font-size:17px;font-weight:500;color:var(--bright)}
+.addendum .ahead i{font-style:normal;font-family:var(--sans);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--eyebrow)}
+.addendum .ahead span{margin-left:auto;font-family:var(--sans);font-size:12.5px;color:var(--faint)}
+.addendum .repbody{font-size:15.5px;color:var(--muted)}
+.addendum form{margin-top:10px}

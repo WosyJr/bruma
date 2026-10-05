@@ -7,6 +7,7 @@ const P = require('../lib/property');
 const A = require('../lib/archive');
 const Ct = require('../lib/court');
 const G = require('../lib/guilds');
+const GM = require('../lib/guildmap');
 const pin = require('./property').pin;
 const Lex = require('../lib/lexfmt');
 
@@ -297,56 +298,153 @@ ${!lex.length && !other.length ? V.empty('No laws or charters have been set down
   });
 
 
-  app.get('/the-guilds', (req, res) => {
-    const counts = G.counts();
+  const guildFace = gid => {
+    const g = O.GUILD_BY_ID[gid];
+    if (!g) return null;
     const offices = O.all();
     const people = U.list().filter(p => p.active);
-
-    const masterOf = gid => {
-      const o = offices.find(x => x.guild === gid && x.listed);
-      if (!o) return null;
-      const who = people.filter(p => p.office === o.id);
-      return { office: o, who };
+    const o = offices.find(x => x.guild === g.id && x.listed);
+    const who = o ? people.filter(p => p.office === o.id) : [];
+    return {
+      guild: g,
+      charter: G.charterFor(g.id),
+      roll: (G.counts()[g.id] || 0),
+      master: { office: o, who },
+      marks: GM.shownCount(g.id),
+      byMap: GM.countShownByMap(g.id)
     };
+  };
+
+  const gmpin = (gid, m) => {
+    const ring = GM.ringOf(m.state);
+    return `<button type="button" class="pin" style="left:${m.x}%;top:${m.y}%" data-id="${esc(m.id)}"
+      title="${esc(m.name)} — ${esc(GM.kindName(gid, m.kind))}">
+      <svg viewBox="0 0 28 36" aria-hidden="true">
+        <circle class="ring" cx="14" cy="13" r="13" fill="none" stroke="${ring}" stroke-width="2" opacity=".55"/>
+        <path d="M14 35C14 35 25 22.5 25 13A11 11 0 1 0 3 13c0 9.5 11 22 11 22z" fill="#1F1710" stroke="${ring}" stroke-width="2"/>
+        <g transform="translate(7 6) scale(0.5)" fill="none" stroke="${ring}" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round">
+          <path d="${GM.kindPath(m.kind)}"/>
+        </g>
+      </svg>
+      <span class="pinlabel" aria-hidden="true">
+        <b>${esc(m.name)}</b>
+        <i>${esc(GM.kindName(gid, m.kind))}</i>
+        <u>${esc(GM.stateName(m.state))}</u>
+      </span>
+    </button>`;
+  };
+
+  app.get('/the-guilds', (req, res) => {
+    const faces = O.GUILDS.map(g => guildFace(g.id)).filter(Boolean);
 
     const body = `
 <section class="card">
   <h2>The Guilds of Bruma</h2>
-  <p class="lede">Three bodies hold charter in the County. A charter is a public thing \u2014 it says what the guild
-  may do and what it owes. Who stands on a guild roll, and what it renders, is the guild\u2019s own business.</p>
+  <p class="lede">${faces.length} ${faces.length === 1 ? 'body holds' : 'bodies hold'} charter in the County.
+  A charter is a public thing — it says what the guild may do and what it owes. Click a hall to read its
+  charter and see what it has marked upon the ground.</p>
 </section>
 
-${O.GUILDS.map(g => {
-  const charter = G.charterFor(g.id);
-  const m = masterOf(g.id);
-  return `<section class="card">
-    <div class="eyebrow" style="margin-bottom:10px">Chartered by the County</div>
-    <h3 style="margin-top:0;font-size:28px">${esc(g.name)}</h3>
-    <div class="grid three" style="margin:16px 0 18px">
-      <div class="stat"><div class="k">On the roll</div><div class="v">${counts[g.id] || 0}</div>
-        <div class="n">${(counts[g.id] || 0) === 1 ? 'member' : 'members'}</div></div>
-      <div class="stat"><div class="k">${esc(m && m.office ? m.office.name : 'Master')}</div>
-        <div class="v" style="font-size:21px;font-family:var(--serif)">${m && m.who.length ? esc(m.who[0].name) : 'Vacant'}</div>
-        <div class="n">${m && m.who.length && m.who[0].style ? esc(m.who[0].style) : 'the hand the County deals with'}</div></div>
-      <div class="stat"><div class="k">Charter</div>
-        <div class="v" style="font-size:21px;font-family:var(--serif)">${charter ? 'Laid' : 'None'}</div>
-        <div class="n">${charter ? 'read it below' : 'not yet laid before the County'}</div></div>
-    </div>
-    ${charter
-      ? `<h3 style="font-size:20px">${esc(charter.title)}</h3>
-         <div style="white-space:pre-wrap;line-height:1.75">${esc(charter.text)}</div>`
-      : V.empty('No charter has been laid for this guild. Until one is, it holds nothing of the County.')}
-  </section>`;
-}).join('')}
+<div class="board">
+${faces.map(f => `<section class="card guildface">
+  <div class="eyebrow">Chartered by the County</div>
+  <h3><a href="/the-guilds/${esc(f.guild.id)}">${esc(f.guild.name)}</a></h3>
+  <div class="rows tight">
+    <div class="row"><div class="main">${esc(f.master.office ? f.master.office.name : 'Master')}</div>
+      <div class="side">${f.master.who.length ? esc(f.master.who[0].name) : '<span class="dash">Vacant</span>'}</div></div>
+    <div class="row"><div class="main">On the roll</div>
+      <div class="side">${f.roll} ${f.roll === 1 ? 'member' : 'members'}</div></div>
+    <div class="row"><div class="main">Charter</div>
+      <div class="side">${f.charter ? 'Laid' : '<span class="dash">None laid</span>'}</div></div>
+    <div class="row"><div class="main">Marked upon the ground</div>
+      <div class="side">${f.marks ? f.marks + (f.marks === 1 ? ' mark' : ' marks') : '<span class="dash">Nothing</span>'}</div></div>
+  </div>
+  <div class="btnrow"><a class="btn ghost small" href="/the-guilds/${esc(f.guild.id)}">The hall and its map →</a></div>
+</section>`).join('')}
+</div>
 
 <section class="card">
   <h3 style="margin-top:0">Joining a guild</h3>
   <p class="lede">The County does not admit anyone to a guild. Each guild keeps its own roll and admits by its own
-  charter \u2014 find its hall in Bruma and ask the Master. If a guild has wronged you, that is a matter for the
+  charter — find its hall in Bruma and ask the Master. If a guild has wronged you, that is a matter for the
   court, and you may <a href="/petition">lay it there</a>.</p>
 </section>`;
 
     res.page({ title: 'The Guilds of Bruma', body, active: 'the-guilds' });
+  });
+
+  app.get('/the-guilds/:id', (req, res) => {
+    const f = guildFace(req.params.id);
+    if (!f) return res.say('No such guild', 'No body of that name holds charter in this County.', 404);
+    const g = f.guild;
+    const mapId = GM.MAP_BY_ID[req.query.map] ? String(req.query.map) : 'county';
+    const theMap = GM.MAP_BY_ID[mapId];
+    const marks = GM.shown(g.id, mapId);
+    const kinds = GM.kindsFor(g.id).filter(k => marks.some(m => m.kind === k.id));
+
+    const body = `
+<section class="card">
+  <div class="eyebrow" style="margin-bottom:8px">Chartered by the County</div>
+  <h2 style="margin-top:0">${esc(g.name)}</h2>
+  <div class="grid three" style="margin:18px 0 0">
+    <div class="stat"><div class="k">On the roll</div><div class="v">${f.roll}</div>
+      <div class="n">${f.roll === 1 ? 'member' : 'members'}</div></div>
+    <div class="stat"><div class="k">${esc(f.master.office ? f.master.office.name : 'Master')}</div>
+      <div class="v" style="font-size:21px;font-family:var(--serif)">${
+        f.master.who.length ? esc(f.master.who[0].name) : 'Vacant'}</div>
+      <div class="n">${f.master.who.length && f.master.who[0].style
+        ? esc(f.master.who[0].style) : 'the hand the County deals with'}</div></div>
+    <div class="stat"><div class="k">Marked upon the ground</div><div class="v">${f.marks}</div>
+      <div class="n">${f.marks === 1 ? 'mark the hall has posted' : 'marks the hall has posted'}</div></div>
+  </div>
+  <div class="btnrow" style="margin-top:18px"><a class="btn ghost small" href="/the-guilds">← All the guilds</a></div>
+</section>
+
+<section class="card" id="map-section">
+  <div class="eyebrow" style="margin-bottom:6px">The hall’s map</div>
+  <p class="hint" style="margin:0 0 14px">What this hall has posted of the ground. The hall keeps some of its
+  marks back, and the County does not post whose hand a mark is in.</p>
+  <div class="maptabs">
+    ${GM.MAPS.map(m => `<a href="/the-guilds/${esc(g.id)}?map=${m.id}#map-section"${
+      m.id === mapId ? ' class="on"' : ''}>${esc(m.name)} <b>${f.byMap[m.id] || 0}</b></a>`).join('')}
+  </div>
+  <div class="mapwrap" data-map="${esc(mapId)}">
+    <img src="${esc(theMap.file)}" alt="A map of ${esc(theMap.name)}">
+    ${marks.map(m => gmpin(g.id, m)).join('')}
+  </div>
+  <p class="mapnote">${marks.length
+    ? 'Hover a mark to see what it is and how it stands.'
+    : 'The hall has posted nothing upon ' + esc(theMap.name.toLowerCase()) + '.'}</p>
+
+  ${kinds.length ? `<div class="maplegend">${kinds.map(k => `<span class="leg">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${GM.kindPath(k.id)}" fill="none"
+      stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    ${esc(k.name)}</span>`).join('')}</div>` : ''}
+
+  ${marks.length ? `<div class="tablewrap capped" style="margin-top:18px">${V.table([
+    { head: 'What', cell: m => esc(m.name) },
+    { head: 'Kind', cell: m => esc(GM.kindName(g.id, m.kind)) },
+    { head: 'Standing', cell: m => `<span class="tag ${(GM.STATE_BY_ID[m.state] || {}).tag || ''}">${esc(GM.stateName(m.state))}</span>` }
+  ], marks)}</div>` : ''}
+</section>
+
+<section class="card">
+  <div class="eyebrow" style="margin-bottom:6px">The charter</div>
+  ${f.charter
+    ? `<h3 style="margin:4px 0 12px">${esc(f.charter.title)}</h3>
+       <div style="white-space:pre-wrap;line-height:1.75;color:var(--muted)">${esc(f.charter.text)}</div>
+       <p class="hint" style="margin-top:16px">Laid by ${esc(f.charter.byName)} · ${esc(V.when(f.charter.at))}</p>`
+    : V.empty('No charter has been laid for this guild. Until one is, it holds nothing of the County.')}
+</section>
+
+<section class="card">
+  <h3 style="margin-top:0">Joining this hall</h3>
+  <p class="lede">The County does not admit anyone to a guild. ${esc(g.name)} keeps its own roll and admits by its
+  own charter — find the hall in Bruma and ask ${f.master.who.length ? 'for ' + esc(f.master.who[0].name) : 'the Master'}.
+  If the hall has wronged you, that is a matter for the court, and you may <a href="/petition">lay it there</a>.</p>
+</section>`;
+
+    res.page({ title: g.name, body, active: 'the-guilds', wide: true });
   });
 
   app.get('/petition', (req, res) => {
