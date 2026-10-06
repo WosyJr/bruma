@@ -874,3 +874,6 @@ table.watchtable td form{margin:0}
 .addendum .ahead span{margin-left:auto;font-family:var(--sans);font-size:12.5px;color:var(--faint)}
 .addendum .repbody{font-size:15.5px;color:var(--muted)}
 .addendum form{margin-top:10px}
+
+.rowacts{display:flex;gap:6px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.rowacts form{margin:0}

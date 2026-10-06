@@ -15,6 +15,8 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
     const byTrade = L.byTrade();
     const soon = L.expiring(21);
     const mayGrant = O.can(u, 'licgrant');
+    const mayRevoke = O.can(u, 'licrevoke');
+    const mayStrike = O.can(u, 'licstrike');
 
     const table = rows.length ? V.table([
       { head: 'No.', num: true, cell: r => `<a href="/licences/${esc(r.id)}">${r.no}</a>` },
@@ -24,7 +26,14 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
       { head: 'Where', cell: r => esc(r.place) || '<span class="dash">—</span>' },
       { head: 'Runs until', cell: r => esc(r.until) || '<span class="dash">—</span>' },
       { head: 'Standing', cell: r => `<span class="tag ${(L.STATE_BY_ID[r.state] || {}).tag || ''}">${esc(L.stateName(r.state))}</span>` },
-      { head: 'Fee', num: true, cell: r => V.septims(r.fee) }
+      { head: 'Fee', num: true, cell: r => V.septims(r.fee) },
+      ...(mayRevoke || mayStrike ? [{ head: '', cell: r => `<div class="rowacts">${
+        mayRevoke && r.state !== 'revoked'
+          ? `<form method="post" action="/licences/${esc(r.id)}/state" class="inline">${V.hidden(req.session.csrf)}
+              <input type="hidden" name="state" value="revoked">
+              <input type="hidden" name="back" value="/licences${q ? '?q=' + encodeURIComponent(q) : ''}">
+              <button class="btn ghost small" type="submit">Revoke</button></form>` : ''}${
+        mayStrike ? `<a class="btn danger small" href="/licences/${esc(r.id)}#strike">Strike</a>` : ''}</div>` }] : [])
     ], rows) : V.empty(q ? 'No licence matches that.' : 'No licence has been granted yet.');
 
     const body = `
@@ -122,6 +131,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
     const u = req.user;
     const mayGrant = O.can(u, 'licgrant');
     const mayRevoke = O.can(u, 'licrevoke');
+    const mayStrike = O.can(u, 'licstrike');
     const paper = Papers.forRef('licences', l.id);
 
     const body = `
@@ -211,6 +221,20 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
         <div class="btnrow"><button class="btn danger" type="submit">Set it</button></div>
       </form>
     </section>` : ''}
+
+    ${mayStrike ? `<section class="card" id="strike">
+      <h3 style="margin-top:0">Strike it from the roll</h3>
+      <p class="hint" style="margin:0 0 12px">The licence leaves the roll altogether and its number stops answering
+      at <b>/verify</b>. Fees already taken stay in the Treasury. This cannot be undone — to end a licence while
+      keeping the record of it, revoke it above instead.</p>
+      <form method="post" action="/licences/${esc(l.id)}/strike">${V.hidden(req.session.csrf)}
+        <label for="kwhy">Why it is struck</label>
+        <input id="kwhy" name="why" type="text" maxlength="300" placeholder="Entered twice in error">
+        <label class="tick"><input type="checkbox" name="sure" value="1" required>
+          <span>I mean to strike licence no. ${l.no} entirely <i>— ${esc(l.sign || l.holder)}</i></span></label>
+        <div class="btnrow"><button class="btn danger" type="submit">Strike it</button></div>
+      </form>
+    </section>` : ''}
   </aside>
 </div>`;
     res.page({ title: 'Licence no. ' + l.no, body, active: 'licences', wide: true });
@@ -233,7 +257,24 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
       const l = L.setState(req.params.id, req.body.state, req.body.why, req.user);
       req.session.flash = { text: 'Licence no. ' + l.no + ' is now ' + L.stateName(l.state).toLowerCase() + '.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
-    res.redirect('/licences/' + req.params.id);
+    res.redirect(back(req, '/licences/' + req.params.id));
+  }));
+
+  app.post('/licences/:id/strike', checkCsrf, need('licstrike'), wrap((req, res) => {
+    const l = L.get(req.params.id);
+    if (!l) {
+      req.session.flash = { err: true, text: 'No such licence.' };
+      return res.redirect('/licences');
+    }
+    if (!req.body.sure) {
+      req.session.flash = { err: true, text: 'Tick the box to strike a licence. Nothing was struck.' };
+      return res.redirect('/licences/' + req.params.id);
+    }
+    L.strike(req.params.id);
+    const why = String(req.body.why || '').trim().slice(0, 300);
+    req.session.flash = { text: 'Licence no. ' + l.no + ' — ' + (l.sign || l.holder)
+      + ' — is struck from the roll' + (why ? ': ' + why : '') + '.' };
+    res.redirect('/licences');
   }));
 
   app.get('/licences/:id/paper', need('licsee'), (req, res) => {
