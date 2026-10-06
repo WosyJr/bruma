@@ -877,3 +877,48 @@ table.watchtable td form{margin:0}
 
 .rowacts{display:flex;gap:6px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
 .rowacts form{margin:0}
+
+.skyfield{position:fixed;left:0;top:0;width:100%;height:clamp(190px,26vh,320px);z-index:0;pointer-events:none;
+  opacity:.82;-webkit-mask-image:linear-gradient(180deg,#000 0,#000 48%,transparent 96%);
+  mask-image:linear-gradient(180deg,#000 0,#000 48%,transparent 96%)}
+body[data-flourish~="sky"] .crest{position:relative;z-index:1;background:transparent}
+body[data-flourish~="sky"] .crest::before{content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(18,13,9,.30),rgba(23,17,12,.72))}
+body[data-flourish~="sky"] nav,body[data-flourish~="sky"] .nav,body[data-flourish~="sky"] .halls{
+  position:relative;z-index:2;background:linear-gradient(180deg,rgba(18,13,9,.90),rgba(23,17,12,.97));
+  backdrop-filter:saturate(.7) blur(2px)}
+body[data-flourish~="sky"] main,body[data-flourish~="sky"] .passstrip,
+body[data-flourish~="sky"] footer{position:relative;z-index:2}
+body[data-flourish~="sky"] .passstrip{background:#0E0A07}
+
+.ravenperch{position:absolute;right:16px;bottom:calc(100% - 24px);height:64px;width:190px;pointer-events:none;z-index:4}
+.raven{position:absolute;left:0;bottom:0;width:78px;height:64px;pointer-events:auto;text-decoration:none;
+  filter:drop-shadow(-2px -1px 0 rgba(201,160,106,.3));will-change:transform}
+.raven .wing{transform-origin:36px 30px}
+.raven.perched{animation:ravenbob 3.4s ease-in-out infinite}
+@keyframes ravenbob{0%,100%{}44%{transform:translate(var(--rx,0),0) rotate(1.4deg)}}
+.ravensay{position:absolute;right:0;top:100%;margin-top:2px;white-space:nowrap;font-family:var(--sans);
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--eyebrow);opacity:0;transition:opacity .18s ease}
+.raven:hover .ravensay,.raven:focus-visible .ravensay{opacity:1}
+.raven:hover{filter:drop-shadow(-2px -1px 0 rgba(244,212,162,.7))}
+@media (max-width:720px){.ravenperch{display:none}}
+
+body[data-flourish~="loom"] table.loomed tbody tr{opacity:0}
+body[data-flourish~="loom"] table.loomed tbody tr.woven{opacity:1;
+  animation:weavein .42s cubic-bezier(.22,.9,.3,1) both}
+@keyframes weavein{from{clip-path:inset(0 100% 0 0);transform:translateY(3px)}to{clip-path:inset(0 0 0 0);transform:none}}
+.shuttle{position:absolute;left:4px;width:24px;height:8px;border-radius:2px;pointer-events:none;opacity:0;z-index:2;
+  background:linear-gradient(90deg,rgba(90,66,40,0),#E09A3E 50%,rgba(90,66,40,0));
+  box-shadow:0 0 12px rgba(224,154,62,.5)}
+
+.warroom{position:relative;perspective:1200px;padding:10px 0 18px}
+.warroom .mapwrap.ontable{transform-origin:50% 62%;transition:transform .2s ease-out;
+  box-shadow:0 26px 54px rgba(0,0,0,.6),0 2px 0 #4A3522,inset 0 0 70px rgba(0,0,0,.4);
+  border-color:#4A3522}
+.warroom .mapwrap.ontable .pin{transform-style:preserve-3d}
+.warroom .mapwrap.ontable .pin svg{filter:drop-shadow(2px 5px 4px rgba(0,0,0,.72))}
+@media (prefers-reduced-motion:reduce){.warroom .mapwrap.ontable{transform:none!important}}
+
+.flcard{margin:0;border-left:3px solid var(--edge2);transition:border-color .2s ease}
+.flcard.lit{border-left-color:var(--accent)}
+.flcard h3{font-family:var(--serif);font-weight:500;font-size:23px}

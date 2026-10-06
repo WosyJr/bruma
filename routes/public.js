@@ -165,8 +165,15 @@ module.exports = function (app, { checkCsrf, wrap, back }) {
     </div>`).join('')}</div>
   </div>`).join('');
 
+    const waiting = [];
+    desk.groups.forEach(g => (g.items || []).forEach(i => {
+      if (waiting.length < 3 && i.link) waiting.push({ what: String(i.text || '').slice(0, 60), href: i.link });
+    }));
+    const ravenAttr = waiting.length
+      ? ' data-ravens="' + esc(JSON.stringify(waiting)) + '"' : '';
+
     const body = `
-<section class="card">
+<section class="card"${ravenAttr} style="position:relative">
   <h2>Good day, ${esc(u.name)}</h2>
   <p class="lede">${esc(u.title)}${u.all ? ' · every door in the County stands open to you' : ''}</p>
 </section>

@@ -1,4 +1,5 @@
 const V = require('../lib/views');
+const Fl = require('../lib/flourish');
 const Sv = require('../lib/service');
 const O = require('../lib/offices');
 const U = require('../lib/users');
@@ -295,6 +296,77 @@ ${offices.map(o => `<section class="card">
   }));
 
   app.get('/offices/:id', need('offices'), (req, res) => res.redirect('/offices'));
+
+  app.get('/flourishes', need('flourish'), (req, res) => {
+    const st = Fl.state();
+    const touch = Fl.lastTouch();
+    const dead = Fl.killed();
+    const unrest = Fl.unrest();
+    const body = `
+<section class="card">
+  <h2>The County's Flourishes</h2>
+  <p class="lede">Four things the County does that nothing else does. Each one can be put out on its own, from here,
+  without touching the code or waiting on a deploy. Turn one off and it is gone from every page on the next load.</p>
+  ${dead ? `<div class="flash bad" role="status"><b>All four are held off at the door.</b>
+    The server was started with <b>FLOURISH=off</b>, which overrides everything on this page. Clear that and restart
+    to give these switches back their power.</div>` : ''}
+  ${touch.at ? `<p class="hint">Last changed by ${esc(touch.by)} · ${esc(V.when(touch.at))}.</p>` : ''}
+</section>
+
+<div class="board one">
+${Fl.EFFECTS.map(e => `<section class="card flcard${st[e.id] ? ' lit' : ''}">
+  <div class="gaolhead">
+    <span class="gno">${esc(e.where)}</span>
+    <span class="tag ${st[e.id] ? 'in' : ''}">${st[e.id] ? 'Running' : 'Put out'}</span>
+  </div>
+  <h3 style="margin:6px 0 6px">${esc(e.name)}</h3>
+  <p style="margin:0 0 14px;color:var(--muted)">${esc(e.note)}</p>
+  ${e.id === 'sky' && st.sky ? `<p class="hint" style="margin:0 0 14px">The county reads
+    <b>${unrest}</b> out of 100 for unrest tonight — ${unrest < 15 ? 'quiet' : unrest < 40 ? 'restless'
+      : unrest < 70 ? 'trouble' : 'the sky is burning'}.</p>` : ''}
+  <form method="post" action="/flourishes/${esc(e.id)}">${V.hidden(req.session.csrf)}
+    <input type="hidden" name="want" value="${st[e.id] ? '0' : '1'}">
+    <button class="btn ${st[e.id] ? 'danger' : 'go'} small" type="submit"${dead ? ' disabled' : ''}>${
+      st[e.id] ? 'Put it out' : 'Light it'}</button>
+  </form>
+</section>`).join('')}
+</div>
+
+<section class="card">
+  <h3 style="margin-top:0">All of them at once</h3>
+  <p class="lede">If something has gone wrong and you do not want to work out which, put the lot out and the County
+  goes back to how it was before any of this.</p>
+  <div class="btnrow">
+    <form method="post" action="/flourishes/all" class="inline">${V.hidden(req.session.csrf)}
+      <input type="hidden" name="want" value="0">
+      <button class="btn danger" type="submit"${dead ? ' disabled' : ''}>Put them all out</button></form>
+    <form method="post" action="/flourishes/all" class="inline">${V.hidden(req.session.csrf)}
+      <input type="hidden" name="want" value="1">
+      <button class="btn ghost" type="submit"${dead ? ' disabled' : ''}>Light them all again</button></form>
+  </div>
+  <p class="hint" style="margin-top:14px">If even this page cannot be reached, start the server with
+  <b>FLOURISH=off</b> in its variables. That holds all four off whatever these switches say, and needs no sign-in.</p>
+</section>`;
+    res.page({ title: 'Flourishes', body, active: 'flourishes', wide: true });
+  });
+
+  app.post('/flourishes/all', checkCsrf, need('flourish'), wrap((req, res) => {
+    const want = String(req.body.want || '') === '1';
+    Fl.setAll(want, req.user);
+    req.session.flash = { text: want ? 'All four are lit.' : 'All four are put out. The County reads as it did before.' };
+    res.redirect('/flourishes');
+  }));
+
+  app.post('/flourishes/:id', checkCsrf, need('flourish'), wrap((req, res) => {
+    try {
+      const want = String(req.body.want || '') === '1';
+      Fl.set(req.params.id, want, req.user);
+      const e = Fl.BY_ID[req.params.id];
+      req.session.flash = { text: e.name + (want ? ' is lit.' : ' is put out.') };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/flourishes');
+  }));
+
 };
 
 function list(v) {
