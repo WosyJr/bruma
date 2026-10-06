@@ -30,22 +30,22 @@
       H = Math.max(120, Math.round(r.height));
       cv.width = W * d; cv.height = H * d; cx.setTransform(d, 0, 0, d, 0, 0);
       stars = [];
-      for (var i = 0; i < 130; i++) stars.push({ x: Math.random() * W, y: Math.random() * H * 0.7, r: Math.random() * 1.1 + 0.25, p: Math.random() * 6.28 });
-      windows = []; town = []; tower = H * 0.3;
-      var base = H * 0.97;
+      for (var i = 0; i < 190; i++) stars.push({ x: Math.random() * W, y: Math.random() * H * 0.78, r: Math.random() * 1.1 + 0.25, p: Math.random() * 6.28 });
+      windows = []; town = []; tower = Math.min(120, H * 0.16);
+      var base = H + 2;
       for (var b = 0; b < 18; b++) {
         var mid = Math.abs(b - 8.5) / 8.5;
         var bw = 26 + Math.random() * 30;
         var bx = (b / 18) * W + Math.random() * 8;
-        var bh = H * 0.07 + (1 - mid) * (H * 0.12) + Math.random() * H * 0.05;
+        var bh = H * 0.035 + (1 - mid) * (H * 0.055) + Math.random() * H * 0.022;
         town.push({ x: bx, w: bw, h: bh, roof: 8 + Math.random() * 9 });
-        for (var wy = 0; wy < Math.floor(bh / 14); wy++) {
+        for (var wy = 0; wy < Math.floor(bh / 13); wy++) {
           for (var wx = 0; wx < Math.floor(bw / 14); wx++) {
             windows.push({ x: bx + 7 + wx * 13, y: base - bh + 9 + wy * 13, on: Math.random(), lit: 0 });
           }
         }
       }
-      for (var ty = 0; ty < 4; ty++) windows.push({ x: W * 0.5 - 5, y: base - tower + 14 + ty * 15, on: Math.random() * 0.4, lit: 0 });
+      for (var ty = 0; ty < 5; ty++) windows.push({ x: W * 0.5 - 5, y: base - tower + 16 + ty * 16, on: Math.random() * 0.4, lit: 0 });
     }
 
     function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
@@ -116,7 +116,7 @@
       }
 
       var ang = (h / 24 - 0.25) * 6.283;
-      var bx = W * 0.5 + Math.cos(ang) * W * 0.46, by = H * 1.02 + Math.sin(ang) * H * 0.95;
+      var bx = W * 0.5 + Math.cos(ang) * W * 0.46, by = H * 0.86 + Math.sin(ang) * H * 0.72;
       var isDay = h > 6 && h < 19.5;
       var halo = cx.createRadialGradient(bx, by, 0, bx, by, isDay ? 60 : 38);
       halo.addColorStop(0, isDay ? 'rgba(255,224,150,.85)' : 'rgba(234,234,222,.8)');
@@ -125,22 +125,22 @@
       cx.fillStyle = isDay ? '#FFE9AE' : '#E8E6DA';
       cx.beginPath(); cx.arc(bx, by, isDay ? 12 : 8, 0, 6.283); cx.fill();
 
-      ridge(H * 0.52, 30, 0, 'rgba(26,22,30,' + (0.5 + night * 0.3) + ')');
-      ridge(H * 0.66, 23, 420, 'rgba(20,16,23,' + (0.68 + night * 0.22) + ')');
-      ridge(H * 0.79, 16, 900, '#131017');
+      ridge(H * 0.70, H * 0.055, 0, 'rgba(26,22,30,' + (0.5 + night * 0.3) + ')');
+      ridge(H * 0.80, H * 0.042, 420, 'rgba(20,16,23,' + (0.68 + night * 0.22) + ')');
+      ridge(H * 0.89, H * 0.028, 900, '#131017');
 
       cx.fillStyle = '#0C0A09';
       for (var b2 = 0; b2 < town.length; b2++) {
         var T = town[b2];
-        cx.fillRect(T.x, H * 0.97 - T.h, T.w, T.h + H);
-        cx.beginPath(); cx.moveTo(T.x - 3, H * 0.97 - T.h);
-        cx.lineTo(T.x + T.w / 2, H * 0.97 - T.h - T.roof); cx.lineTo(T.x + T.w + 3, H * 0.97 - T.h);
+        cx.fillRect(T.x, H - T.h, T.w, T.h + 20);
+        cx.beginPath(); cx.moveTo(T.x - 3, H - T.h);
+        cx.lineTo(T.x + T.w / 2, H - T.h - T.roof); cx.lineTo(T.x + T.w + 3, H - T.h);
         cx.closePath(); cx.fill();
       }
-      cx.beginPath(); cx.moveTo(W * 0.5 - 16, H * 0.97 - tower);
-      cx.lineTo(W * 0.5, H * 0.97 - tower - 26); cx.lineTo(W * 0.5 + 16, H * 0.97 - tower);
+      cx.beginPath(); cx.moveTo(W * 0.5 - 16, H - tower);
+      cx.lineTo(W * 0.5, H - tower - 26); cx.lineTo(W * 0.5 + 16, H - tower);
       cx.closePath(); cx.fill();
-      cx.fillRect(W * 0.5 - 13, H * 0.97 - tower, 26, tower + 10);
+      cx.fillRect(W * 0.5 - 13, H - tower, 26, tower + 10);
 
       var want = h > 17.5 || h < 6.5 ? 1 : 0;
       for (var k = 0; k < windows.length; k++) {
@@ -191,7 +191,7 @@
       a.setAttribute('aria-label', it.what || 'Something waits for you');
       a.innerHTML = SVG + '<span class="ravensay">' + (it.what || '').replace(/[<>&]/g, '') + '</span>';
       perch.appendChild(a);
-      var spot = { x: i * 44, y: 0 };
+      var spot = { x: i * 66, y: 0 };
       if (slow) { a.style.transform = 'translate(' + spot.x + 'px,0)'; a.style.opacity = '1'; return; }
       var from = { x: 300 + i * 40, y: -70 - Math.random() * 30 };
       var start = null, dur = 1400 + Math.random() * 300, delay = 420 + i * 340;
