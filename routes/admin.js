@@ -302,6 +302,7 @@ ${offices.map(o => `<section class="card">
     const touch = Fl.lastTouch();
     const dead = Fl.killed();
     const unrest = Fl.unrest();
+    const groundNow = Fl.ground();
     const body = `
 <section class="card">
   <h2>The County's Flourishes</h2>
@@ -321,9 +322,13 @@ ${Fl.EFFECTS.map(e => `<section class="card flcard${st[e.id] ? ' lit' : ''}">
   </div>
   <h3 style="margin:6px 0 6px">${esc(e.name)}</h3>
   <p style="margin:0 0 14px;color:var(--muted)">${esc(e.note)}</p>
-  ${e.id === 'sky' && st.sky ? `<p class="hint" style="margin:0 0 14px">The county reads
-    <b>${unrest}</b> out of 100 for unrest tonight — ${unrest < 15 ? 'quiet' : unrest < 40 ? 'restless'
-      : unrest < 70 ? 'trouble' : 'the sky is burning'}.</p>` : ''}
+  ${e.id === 'sky' && st.sky ? `<p class="hint" style="margin:0 0 10px">The county reads
+    <b>${unrest}</b> out of 100 for unrest tonight \u2014 ${unrest < 15 ? 'quiet' : unrest < 40 ? 'restless'
+      : unrest < 70 ? 'trouble' : 'it is at its worst'}.</p>
+  <div class="btnrow" style="margin-bottom:12px">${Fl.GROUNDS.map(g => `<form method="post" action="/flourishes/ground" class="inline">${
+    V.hidden(req.session.csrf)}<input type="hidden" name="id" value="${esc(g.id)}">
+    <button class="btn ${g.id === groundNow ? '' : 'ghost'} small" type="submit"${dead ? ' disabled' : ''}>${esc(g.name)}</button></form>`).join('')}</div>
+  <p class="hint" style="margin:0 0 14px">${esc((Fl.GROUND_BY_ID[groundNow] || {}).note || '')}</p>` : ''}
   <form method="post" action="/flourishes/${esc(e.id)}">${V.hidden(req.session.csrf)}
     <input type="hidden" name="want" value="${st[e.id] ? '0' : '1'}">
     <button class="btn ${st[e.id] ? 'danger' : 'go'} small" type="submit"${dead ? ' disabled' : ''}>${
@@ -349,6 +354,15 @@ ${Fl.EFFECTS.map(e => `<section class="card flcard${st[e.id] ? ' lit' : ''}">
 </section>`;
     res.page({ title: 'Flourishes', body, active: 'flourishes', wide: true });
   });
+
+  app.post('/flourishes/ground', checkCsrf, need('flourish'), wrap((req, res) => {
+    try {
+      Fl.setGround(req.body.id, req.user);
+      const g = Fl.GROUND_BY_ID[Fl.ground()];
+      req.session.flash = { text: g ? 'The ground is now ' + g.name.toLowerCase() + '.' : 'The ground is changed.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/flourishes');
+  }));
 
   app.post('/flourishes/all', checkCsrf, need('flourish'), wrap((req, res) => {
     const want = String(req.body.want || '') === '1';

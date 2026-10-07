@@ -269,3 +269,35 @@
   }
   setTimeout(gustIt, 1800 + Math.random() * 2000);
 })();
+
+(function () {
+  function rows(btn) { return btn.closest('form').querySelector('[data-personrows]'); }
+  document.addEventListener('click', function (e) {
+    var add = e.target.closest && e.target.closest('[data-addperson]');
+    if (add) {
+      var box = rows(add);
+      if (!box) return;
+      var last = box.querySelector('.prow:last-child');
+      if (!last) return;
+      var copy = last.cloneNode(true);
+      copy.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+      var sel = copy.querySelector('select');
+      if (sel) sel.selectedIndex = 0;
+      box.appendChild(copy);
+      var first = copy.querySelector('input');
+      if (first) first.focus();
+      return;
+    }
+    var drop = e.target.closest && e.target.closest('[data-dropperson]');
+    if (drop) {
+      var row = drop.closest('.prow');
+      var box2 = rows(drop);
+      if (!row || !box2) return;
+      if (box2.querySelectorAll('.prow').length <= 1) {
+        row.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+        return;
+      }
+      row.remove();
+    }
+  });
+})();

@@ -879,23 +879,23 @@ table.watchtable td form{margin:0}
 .rowacts form{margin:0}
 
 .skyfield{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
-body[data-flourish~="sky"]{background:#0A0908}
-body[data-flourish~="sky"] .crest{position:relative;z-index:2;background:transparent}
-body[data-flourish~="sky"] .crest::before{content:"";position:absolute;inset:0;z-index:-1;
+body[data-ground]{background:#0A0908}
+body[data-ground] .crest{position:relative;z-index:2;background:transparent}
+body[data-ground] .crest::before{content:"";position:absolute;inset:0;z-index:-1;
   background:linear-gradient(180deg,rgba(10,9,8,.56),rgba(10,9,8,.30))}
-body[data-flourish~="sky"] .halls{position:relative;z-index:2;
+body[data-ground] .halls{position:relative;z-index:2;
   background:linear-gradient(180deg,rgba(14,10,7,.93),rgba(18,13,9,.97))}
-body[data-flourish~="sky"] .passstrip{position:relative;z-index:2;background:rgba(10,8,6,.95)}
-body[data-flourish~="sky"] footer.foot{position:relative;z-index:2;background:rgba(10,8,6,.92)}
-body[data-flourish~="sky"] main.wrap{position:relative;z-index:2}
-body[data-flourish~="sky"] main.wrap::before{content:"";position:absolute;z-index:-1;
+body[data-ground] .passstrip{position:relative;z-index:2;background:rgba(10,8,6,.95)}
+body[data-ground] footer.foot{position:relative;z-index:2;background:rgba(10,8,6,.92)}
+body[data-ground] main.wrap{position:relative;z-index:2}
+body[data-ground] main.wrap::before{content:"";position:absolute;z-index:-1;
   top:0;bottom:0;left:-26px;right:-26px;pointer-events:none;
   background:var(--ground);
   box-shadow:0 0 60px 30px var(--ground);
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent);
   mask-image:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent)}
 @media (max-width:900px){
-  body[data-flourish~="sky"] main.wrap::before{left:-10px;right:-10px}
+  body[data-ground] main.wrap::before{left:-10px;right:-10px}
 }
 
 .ravenperch{position:absolute;right:16px;bottom:calc(100% - 24px);height:64px;width:230px;pointer-events:none;z-index:4}
@@ -933,3 +933,11 @@ body[data-flourish~="loom"] table.loomed tbody tr.woven{opacity:1;
 .flcard{margin:0;border-left:3px solid var(--edge2);transition:border-color .2s ease}
 .flcard.lit{border-left-color:var(--accent)}
 .flcard h3{font-family:var(--serif);font-weight:500;font-size:23px}
+
+.prow{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) auto}
+.prowdrop{padding:0;width:34px;min-width:34px;height:38px;line-height:1;font-size:18px;
+  display:inline-flex;align-items:center;justify-content:center;align-self:center}
+@media (max-width:560px){
+  .prow{grid-template-columns:minmax(0,1fr)}
+  .prowdrop{width:100%;height:34px}
+}

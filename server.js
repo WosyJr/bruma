@@ -122,6 +122,10 @@ try {
   if (n) console.log('Laid the Lex Brumae into the archive: ' + n + ' titles.');
   const mended = Arch.mendLex();
   if (mended.length) console.log('Amended the Lex Brumae: ' + mended.join(', ') + '.');
+  try {
+    const fixed = require('./lib/reports').mendParties();
+    if (fixed) console.log('Set one party upon ' + fixed + ' report paper(s).');
+  } catch (e) { console.error('Could not mend the report papers:', e.message); }
 } catch (e) { console.error('Could not seed the Lex Brumae:', e.message); }
 
 if (require.main === module) {

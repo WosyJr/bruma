@@ -11,10 +11,107 @@
     return Number.isFinite(v) ? v : fallback;
   }
 
-  if (has('sky')) sky();
+  var ground = (document.body.getAttribute('data-ground') || 'none');
+  if (ground === 'sky') sky();
+  else if (ground === 'snow') snowGround();
   if (has('raven')) ravens();
   if (has('loom')) loom();
   if (has('table')) warTable();
+
+  function snowGround() {
+    var cv = document.getElementById('skyfield');
+    if (!cv || !cv.getContext) return;
+    var cx = cv.getContext('2d');
+    var heavy = Math.max(0, Math.min(100, meta('bruma-unrest', 0))) / 100;
+    var W = 0, H = 0, flakes = [], drift = [], stone = null;
+
+    function makeStone() {
+      var c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      var g = c.getContext('2d');
+      var lg = g.createLinearGradient(0, 0, 0, H);
+      lg.addColorStop(0, '#14100E'); lg.addColorStop(1, '#1E1815');
+      g.fillStyle = lg; g.fillRect(0, 0, W, H);
+      var rowH = 64, colW = 172, y, x, off;
+      g.strokeStyle = 'rgba(0,0,0,.46)'; g.lineWidth = 1;
+      for (y = 0; y < H + rowH; y += rowH) {
+        g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke();
+        off = (Math.floor(y / rowH) % 2) ? 0 : colW / 2;
+        for (x = off; x < W + colW; x += colW) {
+          g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + rowH); g.stroke();
+        }
+      }
+      g.fillStyle = 'rgba(236,230,220,.030)';
+      for (y = 0; y < H + rowH; y += rowH) {
+        off = (Math.floor(y / rowH) % 2) ? 0 : colW / 2;
+        for (x = off; x < W + colW; x += colW) g.fillRect(x + 2, y + 1, colW - 4, 2);
+      }
+      g.globalAlpha = 0.5;
+      for (var i = 0; i < Math.round(W * H / 420); i++) {
+        var px = Math.random() * W, py = Math.random() * H, pr = 0.5 + Math.random() * 1.9;
+        g.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,.5)' : 'rgba(150,146,140,.2)';
+        g.beginPath(); g.arc(px, py, pr, 0, 6.283); g.fill();
+      }
+      g.globalAlpha = 1;
+      return c;
+    }
+
+    function newFlake(seed) {
+      return { x: Math.random() * W, y: seed ? Math.random() * H : -14,
+        r: 0.7 + Math.random() * (1.7 + heavy * 1.1),
+        sp: 16 + Math.random() * (40 + heavy * 44),
+        ph: Math.random() * 6.28 };
+    }
+
+    function size() {
+      var r = cv.getBoundingClientRect();
+      var d = Math.min(2, window.devicePixelRatio || 1);
+      W = Math.max(320, Math.round(r.width)); H = Math.max(200, Math.round(r.height));
+      cv.width = W * d; cv.height = H * d; cx.setTransform(d, 0, 0, d, 0, 0);
+      stone = makeStone();
+      var want = Math.round((W * H) / 9000 * (1 + heavy));
+      flakes = []; for (var i = 0; i < want; i++) flakes.push(newFlake(true));
+      drift = []; for (var k = 0; k <= Math.ceil(W / 8); k++) drift.push(0);
+    }
+
+    var last = performance.now(), visible = true;
+    function frame(now) {
+      var dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (!visible) { requestAnimationFrame(frame); return; }
+      var time = now / 1000;
+      cx.drawImage(stone, 0, 0);
+      for (var i = 0; i < flakes.length; i++) {
+        var f = flakes[i];
+        f.y += f.sp * dt;
+        f.x += (Math.sin(time * 0.7 + f.ph) * 0.5 + 0.22 + heavy * 0.5);
+        if (f.y > H - 3) {
+          var col = Math.max(0, Math.min(drift.length - 1, Math.round(f.x / 8)));
+          drift[col] = Math.min(30, drift[col] + 0.4);
+          flakes[i] = newFlake(false); continue;
+        }
+        if (f.x > W + 10) f.x = -10;
+        cx.globalAlpha = 0.46 + f.r * 0.2;
+        cx.fillStyle = '#F2EDE4';
+        cx.beginPath(); cx.arc(f.x, f.y, f.r, 0, 6.283); cx.fill();
+      }
+      cx.globalAlpha = 1;
+      cx.beginPath(); cx.moveTo(0, H);
+      for (var c = 0; c < drift.length; c++) {
+        var sm = (drift[Math.max(0, c - 1)] + drift[c] + drift[Math.min(drift.length - 1, c + 1)]) / 3;
+        cx.lineTo(c * 8, H - sm);
+      }
+      cx.lineTo(W, H); cx.closePath();
+      var dg = cx.createLinearGradient(0, H - 30, 0, H);
+      dg.addColorStop(0, 'rgba(236,232,224,.74)'); dg.addColorStop(1, 'rgba(204,200,194,.92)');
+      cx.fillStyle = dg; cx.fill();
+      requestAnimationFrame(frame);
+    }
+
+    document.addEventListener('visibilitychange', function () { visible = !document.hidden; });
+    window.addEventListener('resize', size);
+    size();
+    if (slow) { cx.drawImage(stone, 0, 0); } else requestAnimationFrame(frame);
+  }
 
   function sky() {
     var cv = document.getElementById('skyfield');

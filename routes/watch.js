@@ -318,7 +318,7 @@ ${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : '
 
   const reportFields = (r, gkinds) => {
     const o = r || {};
-    const persons = (o.persons || []).concat([{ name: '', race: '', role: 'involved' }, { name: '', race: '', role: 'involved' }]);
+    const persons = (o.persons || []).concat([{ name: '', race: '', role: 'involved' }, { name: '', race: '', role: 'involved' }, { name: '', race: '', role: 'involved' }]);
     return `<div class="formgrid">
       <label class="f3"><span>Heading</span>
         <input name="title" type="text" maxlength="180" value="${esc(o.title || '')}" required
@@ -338,13 +338,18 @@ ${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : '
 
     <div class="eyebrow" style="margin:22px 0 2px">Persons</div>
     <p class="hint" style="margin:0 0 4px">Name everyone the report touches. Leave a row empty to drop it.</p>
-    <div class="personrows">
+    <div class="personrows" data-personrows>
       ${persons.map(p => `<div class="prow">
         <input name="pname" type="text" maxlength="120" value="${esc(p.name || '')}" placeholder="Name">
         <input name="prace" type="text" maxlength="60" value="${esc(p.race || '')}" placeholder="Race or kin">
         <select name="prole">${R.ROLES.map(x =>
           `<option value="${x.id}"${x.id === p.role ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+        <button class="btn ghost small prowdrop" type="button" data-dropperson title="Take this row off">×</button>
       </div>`).join('')}
+    </div>
+    <div class="btnrow" style="margin-top:4px">
+      <button class="btn ghost small" type="button" data-addperson>Add another person</button>
+      <span class="hint" style="margin:0">As many as the report needs. Empty rows are dropped when you set it down.</span>
     </div>
 
     <div class="formgrid">
