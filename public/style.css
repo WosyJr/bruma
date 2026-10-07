@@ -37,7 +37,8 @@ a:hover{color:var(--linkhi)}
 
 body.widepage{--measure:1240px}
 
-.crest{background:var(--band);border-bottom:1px solid var(--edge);position:relative;overflow:hidden}
+.crest{background:var(--band);border-bottom:1px solid var(--edge);position:relative;overflow:hidden;
+  max-width:var(--measure);margin:0 auto}
 .crest::after{content:"";position:absolute;left:50%;top:-180px;width:900px;height:420px;transform:translateX(-50%);
   background:radial-gradient(closest-side,rgba(224,154,62,.16),rgba(224,154,62,0) 100%);pointer-events:none}
 .crestinner{position:relative;max-width:var(--measure);margin:0 auto;padding:22px var(--gutter);display:flex;
@@ -51,7 +52,7 @@ body.widepage{--measure:1240px}
 .eyebrow{font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:var(--eyebrow)}
 .seat{font-family:var(--serif);font-style:italic;font-size:17px;color:var(--soft)}
 
-.halls{background:var(--band);border-bottom:1px solid var(--edge)}
+.halls{background:var(--band);border-bottom:1px solid var(--edge);max-width:var(--measure);margin:0 auto}
 .halls .inner{max-width:var(--measure);margin:0 auto;padding:0 calc(var(--gutter) - 16px);display:flex;flex-wrap:wrap}
 .halls a{padding:13px 16px;color:var(--muted);text-decoration:none;font-size:15.5px;border-bottom:2px solid transparent;margin-bottom:-1px}
 .halls a:hover{color:var(--bright);background:rgba(224,154,62,.07)}
@@ -163,7 +164,7 @@ ul.plain{list-style:none;padding:0;margin:12px 0}
 ul.plain li{padding:9px 0;border-bottom:1px solid var(--edge);color:var(--muted)}
 ul.plain li:last-child{border-bottom:none}
 
-.foot{border-top:1px solid var(--edge);background:var(--band);padding:40px 32px;
+.foot{max-width:var(--measure);margin:0 auto;border-top:1px solid var(--edge);background:var(--band);padding:40px var(--gutter);
   display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:14px;color:var(--dim)}
 .foot .motto{font-family:var(--serif);font-style:italic;font-size:19px;color:var(--soft)}
 
@@ -380,6 +381,7 @@ details.fold > .inner{padding:0 18px 18px}
 details.fold[open] > summary{border-bottom:1px solid var(--edge);margin-bottom:16px}
 
 .passstrip{display:block;position:relative;overflow:hidden;text-decoration:none;
+  max-width:var(--measure);margin:0 auto;
   background:linear-gradient(180deg,#0C0906,#120D09);border-bottom:1px solid var(--edge);
   --spd:68s;--amt:.26;--tint:220,232,245;--slant:-6deg;--haze:0;--den:1}
 .passstrip .drift{position:absolute;inset:-70px -34%;pointer-events:none;
