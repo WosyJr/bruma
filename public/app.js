@@ -301,3 +301,13 @@
     }
   });
 })();
+
+document.addEventListener('change', function (e) {
+  var sel = e.target.closest && e.target.closest('[data-lictrade]');
+  if (!sel) return;
+  var form = sel.closest('form');
+  if (!form) return;
+  var fee = form.querySelector('[data-licfee]');
+  var opt = sel.options[sel.selectedIndex];
+  if (fee && opt && opt.getAttribute('data-fee')) fee.value = opt.getAttribute('data-fee');
+});

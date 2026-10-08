@@ -54,12 +54,12 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
           <label class="f2"><span>Under the sign of</span>
             <input name="sign" type="text" maxlength="120" placeholder="Novaroma"></label>
           <label class="f2"><span>What is licensed</span>
-            <select name="trade">${L.TRADES.map(t =>
-              `<option value="${t.id}">${esc(t.name)} \u2014 ${t.fee} septims</option>`).join('')}</select></label>
+            <select name="trade" data-lictrade>${L.TRADES.map(t =>
+              `<option value="${t.id}" data-fee="${t.fee}">${esc(t.name)} \u2014 ${t.fee} septims</option>`).join('')}</select></label>
           <label class="f2"><span>Where</span>
             <input name="place" type="text" maxlength="140" placeholder="The Market, within the walls"></label>
           <label><span>Fee in septims</span>
-            <input name="fee" type="number" min="0" step="10" value="150"></label>
+            <input name="fee" type="number" min="0" step="10" value="${L.TRADES[0].fee}" data-licfee></label>
           <label><span>Runs from</span>
             <input name="from" type="text" maxlength="80" placeholder="The 1st of Frostfall"></label>
           <label><span>Runs until</span>
@@ -200,8 +200,8 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
         <label for="asign">Under the sign of</label>
         <input id="asign" name="sign" type="text" maxlength="120" value="${esc(l.sign)}">
         <label for="atrade">What is licensed</label>
-        <select id="atrade" name="trade">${L.TRADES.map(t =>
-          `<option value="${t.id}"${t.id === l.trade ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</select>
+        <select id="atrade" name="trade">${(L.offered(l.trade) ? L.TRADES : L.TRADES.concat([L.TRADE_BY_ID[l.trade]].filter(Boolean))).map(t =>
+          `<option value="${t.id}"${t.id === l.trade ? ' selected' : ''}>${esc(t.name)}${L.offered(t.id) ? '' : ' \u2014 no longer issued'}</option>`).join('')}</select>
         <label for="aplace">Where</label>
         <input id="aplace" name="place" type="text" maxlength="140" value="${esc(l.place)}">
         <label for="aterms">Upon what terms</label>
