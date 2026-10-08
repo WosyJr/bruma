@@ -215,11 +215,20 @@
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   var map = document.getElementById('clothmap');
+  var GALE = { open: 0.1, riders: 0.38, escort: 0.68, shut: 1 };
+  var pm = document.querySelector('meta[name="bruma-pass"]');
+  var gale = GALE[pm ? String(pm.getAttribute('content') || 'open') : 'open'];
+  if (typeof gale !== 'number') gale = 0.1;
+
+  var base = 5 + gale * 10;
   var want = 0;
   var have = 0;
   var gust = 0;
   var last = 0;
   var running = false;
+  var started = performance.now();
+
+  mast.style.setProperty('--gale', gale.toFixed(3));
 
   function onMove(e) {
     var w = window.innerWidth || 1;
@@ -234,11 +243,12 @@
   function frame(now) {
     have += (want - have) * 0.07;
     gust *= 0.94;
-    mast.style.setProperty('--wind', have.toFixed(4));
-    if (map) map.setAttribute('scale', (5 + gust * 16).toFixed(2));
-    if (Math.abs(want - have) < 0.002 && gust < 0.01 && now - last > 400) {
+    var breath = Math.sin((now - started) / (1500 - gale * 700)) * gale;
+    mast.style.setProperty('--wind', (have + breath * 0.5).toFixed(4));
+    if (map) map.setAttribute('scale', (base + gust * 16 + Math.abs(breath) * 5).toFixed(2));
+    if (gale < 0.2 && Math.abs(want - have) < 0.002 && gust < 0.01 && now - last > 400) {
       running = false;
-      if (map) map.setAttribute('scale', '5');
+      if (map) map.setAttribute('scale', base.toFixed(2));
       return;
     }
     requestAnimationFrame(frame);
@@ -247,6 +257,8 @@
   window.addEventListener('mousemove', onMove, { passive: true });
   window.addEventListener('blur', function () { want = 0; gust = 0; last = performance.now();
     if (!running) { running = true; requestAnimationFrame(frame); } });
+  if (gale >= 0.2) { running = true; requestAnimationFrame(frame); }
+  else if (map) map.setAttribute('scale', base.toFixed(2));
 })();
 
 (function () {

@@ -23,8 +23,8 @@
   --sans:'Alegreya Sans',system-ui,sans-serif;
 }
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.6}
+html{-webkit-text-size-adjust:100%;overflow-x:clip}
+body{margin:0;overflow-x:clip;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.6}
 a{color:var(--link);text-decoration-color:rgba(232,184,112,.4)}
 a:hover{color:var(--linkhi)}
 
@@ -177,7 +177,7 @@ ul.plain li:last-child{border-bottom:none}
 
 .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--edge);background:var(--ground);
   margin:-30px -32px 0}
-@media (max-width:700px){.hero{margin:-20px -17px 0}}
+@media (max-width:700px){.hero{margin:0 0 4px;border:1px solid var(--edge);border-radius:3px}}
 .hero::before{content:"";position:absolute;left:50%;top:-140px;width:1100px;height:620px;transform:translateX(-50%);
   background:radial-gradient(closest-side,rgba(224,154,62,.22),rgba(224,154,62,0) 100%);pointer-events:none}
 .heroin{position:relative;max-width:1120px;margin:0 auto;padding:84px 32px 76px;text-align:center}
@@ -187,6 +187,19 @@ ul.plain li:last-child{border-bottom:none}
   margin:0 auto 34px;max-width:660px}
 .heroin .btnrow{justify-content:center;margin-top:0}
 @media (max-width:700px){.heroin{padding:52px 18px 48px}.heroin h2{font-size:40px}.heroin .lede{font-size:19px}}
+
+.hero.haswindow{cursor:crosshair}
+.hero.haswindow::before{display:none}
+.hero.haswindow #passwin{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hero.haswindow .sill{position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 120px 34px rgba(12,8,5,.74), inset 0 -34px 54px -26px rgba(12,8,5,.72)}
+.hero.haswindow .heroin{z-index:2;min-height:clamp(300px,36vw,430px);display:flex;flex-direction:column;
+  justify-content:center}
+.hero.haswindow .heroin h2{text-shadow:0 2px 26px rgba(10,6,3,.92)}
+.hero.haswindow .heroin .lede{color:var(--ink);text-shadow:0 2px 18px rgba(10,6,3,.95)}
+.hero.haswindow .heroin .eyebrow{text-shadow:0 2px 14px rgba(10,6,3,.9)}
+.hero.haswindow .btn.ghost{background:rgba(18,13,9,.68);backdrop-filter:blur(2px)}
+@media (max-width:700px){.hero.haswindow .heroin{min-height:300px}}
 
 .rule{display:flex;align-items:center;gap:20px;margin:36px 0 4px}
 .rule .line{height:1px;background:var(--edge);flex:1}
@@ -226,10 +239,12 @@ ul.plain li:last-child{border-bottom:none}
 .crest::after{animation:emberglow 7s ease-in-out infinite}
 .hero::before{animation:emberglow 9s ease-in-out infinite}
 .mast{display:block;flex:none;align-self:center;transform-origin:50% 3%;
-  transform:rotate(calc(var(--wind,0) * 2.1deg)) skewX(calc(var(--wind,0) * -1.5deg))
-    translateX(calc(var(--wind,0) * 4px));
+  transform:rotate(calc(var(--wind,0) * (2.1deg + var(--gale,0) * 3.4deg)))
+    skewX(calc(var(--wind,0) * (-1.5deg - var(--gale,0) * 2.6deg)))
+    translateX(calc(var(--wind,0) * (4px + var(--gale,0) * 5px)));
   transition:transform .55s cubic-bezier(.22,.8,.3,1)}
-.arms{transform-origin:50% 3%;animation:sway 9s ease-in-out infinite;filter:url(#cloth)}
+.arms{transform-origin:50% 3%;filter:url(#cloth);
+  animation:sway calc(9s - var(--gale,0) * 5.4s) ease-in-out infinite}
 .weave{position:absolute;width:0;height:0;overflow:hidden}
 .rule svg path{animation:flicker 3.4s ease-in-out infinite}
 

@@ -53,7 +53,9 @@ module.exports = function (app, { checkCsrf, wrap, back }) {
     ];
 
     const body = `
-<section class="hero">
+<section class="hero haswindow" data-pass="${esc(passState.id)}">
+  <canvas id="passwin" aria-label="A view north to the Pale Pass" role="img"></canvas>
+  <i class="sill" aria-hidden="true"></i>
   <div class="heroin">
     <h2>The County of Bruma</h2>
     <p class="lede">Northernmost county of Cyrodiil. Keeper of the Pale Pass, and the last warm hall before Skyrim.</p>
