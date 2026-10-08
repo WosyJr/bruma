@@ -636,14 +636,22 @@ table.watchtable tr.live td{background:rgba(224,154,62,.045)}
 .onnow{color:var(--accent);font-style:italic}
 
 .postlist{display:flex;flex-direction:column;gap:7px}
-.pst{display:flex;align-items:center;gap:11px;justify-content:space-between;
-  border:1px solid var(--edge);padding:9px 12px;border-radius:3px}
+.pst{border:1px solid var(--edge);padding:9px 12px;border-radius:3px}
 .pst.empty{border-left:2px solid #B9452F}
 .pst.manned{border-left:2px solid #39614A}
 .pst.returned{border-left:2px solid var(--edge2)}
-.pstn{min-width:0}
-.pstn b{display:block;font-family:var(--serif);font-weight:500;font-size:15.5px;color:var(--warm);line-height:1.25}
-.pstn i{display:block;font-style:normal;font-size:12px;color:var(--faint);margin-top:1px}
+.pstt{display:flex;align-items:center;gap:11px;justify-content:space-between}
+.pstn{min-width:0;flex:1 1 auto}
+.pstn b{display:block;font-family:var(--serif);font-weight:500;font-size:15.5px;color:var(--warm);
+  line-height:1.25;overflow-wrap:anywhere}
+.pstn i{display:block;font-style:normal;font-size:12px;color:var(--faint);margin-top:1px;
+  overflow-wrap:anywhere}
+.pstcrew{list-style:none;margin:9px 0 0;padding:9px 0 0;border-top:1px solid var(--edge);
+  display:flex;flex-direction:column;gap:6px}
+.pstcrew li{display:flex;align-items:center;gap:10px;justify-content:space-between;min-width:0}
+.pstwho{font-size:13.5px;color:var(--ink);min-width:0;overflow-wrap:anywhere}
+.pstself{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);flex:none}
+.pstcrew .btn{flex:none}
 
 .bars{display:flex;flex-direction:column;gap:11px}
 .brn{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;color:var(--muted);margin-bottom:5px}
@@ -818,7 +826,6 @@ details.rmem .btnrow{margin:2px 0 0}
 .strikebtns{display:flex;gap:6px;flex:none;flex-wrap:wrap}
 
 .byhand{display:block;font-size:11px;letter-spacing:.05em;color:var(--dim);font-style:italic;margin-top:2px}
-.pstr{display:flex;align-items:center;gap:7px;flex:none;flex-wrap:wrap;justify-content:flex-end}
 table.watchtable td form{margin:0}
 
 .maptabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}

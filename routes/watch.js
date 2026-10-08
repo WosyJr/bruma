@@ -134,19 +134,30 @@ ${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : '
     <section class="card tight">
       <div class="eyebrow" style="margin-bottom:12px">The posts</div>
       <div class="postlist">
-        ${posts.map(p => `<div class="pst ${esc(p.state)}">
-          <div class="pstn"><b>${esc(p.name)}</b><i>${
-            p.state === 'manned' ? esc(p.who)
-            : p.state === 'returned' ? 'patrol returned ' + esc(clock(p.last))
-            : p.last ? 'nobody since ' + esc(clock(p.last)) : 'nobody yet'}</i></div>
-          <span class="pstr">
+        ${posts.map(p => {
+          const crew = p.crew || [];
+          const solo = crew.length === 1;
+          return `<div class="pst ${esc(p.state)}">
+          <div class="pstt">
+            <div class="pstn"><b>${esc(p.name)}</b>${
+              p.state === 'manned'
+                ? (mayRoster
+                    ? `<i>${solo ? 'since ' + esc(clock(crew[0].on)) : crew.length + ' on the post'}</i>`
+                    : `<i>${esc(p.who)}</i>`)
+                : `<i>${p.state === 'returned' ? 'patrol returned ' + esc(clock(p.last))
+                    : p.last ? 'nobody since ' + esc(clock(p.last)) : 'nobody yet'}</i>`}</div>
             <span class="tag ${p.state === 'manned' ? 'in' : p.state === 'returned' ? '' : 'out'}">${
               p.state === 'manned' ? 'Manned' : p.state === 'returned' ? 'Returned' : 'Empty'}</span>
-            ${mayRoster && p.state === 'manned' ? duty.filter(d => d.post === p.id && d.who !== u.username).map(d =>
-              `<form method="post" action="/watch/off/${esc(d.id)}" class="inline">${V.hidden(req.session.csrf)}
-                 <button class="btn ghost small" type="submit" title="Clock ${esc(d.name)} off">Clock off</button></form>`).join('') : ''}
-          </span>
-        </div>`).join('')}
+          </div>
+          ${mayRoster && crew.length ? `<ul class="pstcrew">${crew.map(d => `<li>
+            <span class="pstwho">${esc(d.name)}</span>
+            ${d.who === u.username
+              ? '<span class="pstself">you</span>'
+              : `<form method="post" action="/watch/off/${esc(d.id)}" class="inline">${V.hidden(req.session.csrf)}
+                 <button class="btn ghost small" type="submit">Clock off</button></form>`}
+          </li>`).join('')}</ul>` : ''}
+        </div>`;
+        }).join('')}
       </div>
     </section>
 
