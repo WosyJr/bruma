@@ -249,21 +249,15 @@ ${O.can(u, 'watchclock') ? `<section class="card">
   app.get('/login', (req, res) => {
     if (req.user) return res.redirect('/hall');
     const to = String(req.query.to || '/hall');
-    const body = `
-<section class="card" style="max-width:460px;margin:0 auto">
-  <h2>Enter the Hall</h2>
-  <p class="lede">The County knows its own. Give your name and word.</p>
-  <form method="post" action="/login">${V.hidden(req.session.csrf)}
-    <input type="hidden" name="to" value="${esc(to)}">
-    <label for="username">Name upon the rolls</label>
-    <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" autofocus required>
-    <label for="password">Word</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" required>
-    <div class="btnrow"><button class="btn" type="submit">Enter</button></div>
-  </form>
-  <p class="hint" style="margin-top:16px">No account? The Steward or the Count makes them. Ask in the hold.</p>
-</section>`;
-    res.page({ title: 'Enter the Hall', body });
+    const flash = req.session.flash;
+    req.session.flash = null;
+    res.set('Cache-Control', 'no-store');
+    res.send(V.doorPage({
+      title: 'Enter the Hall',
+      csrf: req.session.csrf,
+      to: to.startsWith('/') && !to.startsWith('//') ? to : '/hall',
+      flash
+    }));
   });
 
   app.post('/login', checkCsrf, (req, res) => {
