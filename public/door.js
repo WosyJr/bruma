@@ -89,20 +89,57 @@
   var tx = 0, ty = 0, cx = 0, cy = 0, spin = 0;
   var blink = 0, nextBlink = 2600 + Math.random() * 3200;
   var dil = 0, started = 0, last = 0;
+  var mouseX = 0, mouseY = 0;
+  var averting = false;
+  var lidWant = 0, lidHave = 0;
+  var pin = 0, pinWant = 0;
+  var going = false;
+  var narrowUntil = 0;
 
-  window.addEventListener('mousemove', function (e) {
+  function aim() {
+    if (averting) { tx = 34; ty = -22; return; }
     var b = svg.getBoundingClientRect();
     if (!b.width) return;
-    var px = (e.clientX - (b.left + b.width / 2)) / (b.width / 2);
-    var py = (e.clientY - (b.top + b.height / 2)) / (b.height / 2);
+    var px = (mouseX - (b.left + b.width / 2)) / (b.width / 2);
+    var py = (mouseY - (b.top + b.height / 2)) / (b.height / 2);
     var d = Math.sqrt(px * px + py * py) || 1;
     var cl = Math.min(1, d) / d;
     tx = px * cl * 40;
     ty = py * cl * 26;
+  }
+
+  window.addEventListener('mousemove', function (e) {
+    mouseX = e.clientX; mouseY = e.clientY;
+    aim();
   }, { passive: true });
 
   svg.addEventListener('mouseenter', function () { dil = 7; });
   svg.addEventListener('mouseleave', function () { dil = 0; });
+
+  var word = document.getElementById('password');
+  if (word) {
+    word.addEventListener('focus', function () { averting = true; lidWant = .5; aim(); });
+    word.addEventListener('blur', function () { averting = false; lidWant = 0; aim(); });
+    if (document.activeElement === word) { averting = true; lidWant = .5; aim(); }
+  }
+
+  if (document.body.getAttribute('data-refused') === '1') {
+    narrowUntil = performance.now() + 1100;
+  }
+
+  var form = document.getElementById('doorform');
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      if (going) return;
+      if (!form.checkValidity()) return;
+      e.preventDefault();
+      going = true;
+      lidWant = 1;
+      pinWant = -14;
+      document.body.classList.add('going');
+      setTimeout(function () { form.submit(); }, 440);
+    });
+  }
 
   var running = false;
   function frame(t) {
@@ -122,20 +159,29 @@
     ring1.setAttribute('transform', 'rotate(' + spin.toFixed(2) + ' 250 200)');
     ring2.setAttribute('transform', 'rotate(' + (-spin * 1.75).toFixed(2) + ' 250 200)');
 
-    var r = 33 + Math.sin(t / 1400) * 2.4 + dil;
-    pupil.setAttribute('r', Math.max(15, r).toFixed(2));
+    var narrowing = t < narrowUntil;
+    var narrowK = narrowing ? Math.min(1, (narrowUntil - t) / 300) : 0;
+    pinWant = going ? -14 : (narrowing ? -12 * narrowK : 0);
+    pin += (pinWant - pin) * 0.12;
+
+    var r = 33 + Math.sin(t / 1400) * 2.4 + dil + pin;
+    pupil.setAttribute('r', Math.max(14, r).toFixed(2));
     spark.setAttribute('opacity', (0.62 + Math.sin(t / 900) * 0.16).toFixed(3));
     halo.setAttribute('opacity', (0.38 + Math.sin(t / 1700) * 0.14).toFixed(3));
 
     nextBlink -= dt;
-    if (nextBlink <= 0 && blink <= 0) { blink = 270; nextBlink = 3600 + Math.random() * 5200; }
+    if (!going && !narrowing && nextBlink <= 0 && blink <= 0) {
+      blink = 270; nextBlink = 3600 + Math.random() * 5200;
+    }
     var open = 0;
     if (blink > 0) {
       blink -= dt;
       open = Math.max(0, Math.min(1, 1 - Math.abs(1 - (270 - blink) / 135)));
     }
     var intro = age < 1500 ? 1 - Math.min(1, Math.pow(age / 1200, 0.55)) : 0;
-    var shut = Math.max(open, intro);
+    var narrow = narrowing ? .58 * narrowK : 0;
+    lidHave += (lidWant - lidHave) * (going ? 0.18 : 0.1);
+    var shut = Math.max(open, intro, narrow, lidHave);
     lid.setAttribute('y', (-240 + shut * 445).toFixed(1));
     lidlow.setAttribute('y', (390 - shut * 230).toFixed(1));
 

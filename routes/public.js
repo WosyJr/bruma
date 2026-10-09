@@ -260,12 +260,28 @@ ${O.can(u, 'watchclock') ? `<section class="card">
     }));
   });
 
+  const tries = new Map();
+  function knock(key, max, windowMs) {
+    const now = Date.now();
+    const row = tries.get(key);
+    if (!row || now - row.at > windowMs) { tries.set(key, { n: 1, at: now }); return true; }
+    row.n += 1;
+    if (tries.size > 5000) tries.clear();
+    return row.n <= max;
+  }
+
   app.post('/login', checkCsrf, (req, res) => {
+    if (!req.session.knocker) req.session.knocker = Math.random().toString(36).slice(2, 12);
+    if (!knock('door|' + req.session.knocker, 12, 15 * 60 * 1000)) {
+      req.session.flash = { err: true, text: 'Too many words tried at this door. Come back in a quarter of an hour.' };
+      return res.redirect('/login');
+    }
     const u = U.authenticate(req.body.username, req.body.password);
     if (!u) {
       req.session.flash = { err: true, text: 'That name and word do not answer to one another.' };
       return res.redirect('/login');
     }
+    tries.delete('door|' + req.session.knocker);
     req.session.username = u.username;
     const to = String(req.body.to || '/hall');
     res.redirect(u.mustChange ? '/me/password' : (to.startsWith('/') && !to.startsWith('//') ? to : '/hall'));
