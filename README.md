@@ -14,6 +14,8 @@ domain, its own variables and its own volume.
 | Name | What it is |
 |---|---|
 | `SESSION_SECRET` | A long random string. Changing it signs everybody out. |
+| `IDLE_MINUTES` | How long someone may sit idle before the hall closes on them. Default 30. |
+| `AUDIT_KEY` | The same long random string as on the Ministry. Its **Every Hand** page then reads this site's sign-ins, strikes and doings from `/audit.json`. |
 | `MASTER_USERNAME` | The name the first account enters with, e.g. `wosy` |
 | `MASTER_PASSWORD` | Its first word. Change it the moment you are in. |
 | `MASTER_NAME` | The name shown on screen, e.g. `Wosy` |

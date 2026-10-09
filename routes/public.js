@@ -1,3 +1,4 @@
+const C = require('../lib/config');
 const V = require('../lib/views');
 const Sv = require('../lib/service');
 const U = require('../lib/users');
@@ -270,6 +271,13 @@ ${O.can(u, 'watchclock') ? `<section class="card">
     return row.n <= max;
   }
 
+  app.get('/audit.json', (req, res) => {
+    const key = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!C.AUDIT_KEY || !key || key !== C.AUDIT_KEY) return res.status(404).type('text/plain').send('');
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ site: 'bruma', name: 'County of Bruma', events: require('../lib/ledger').events(req.query.since, req.query.limit) });
+  });
+
   app.post('/login', checkCsrf, (req, res) => {
     if (!req.session.knocker) req.session.knocker = Math.random().toString(36).slice(2, 12);
     if (!knock('door|' + req.session.knocker, 12, 15 * 60 * 1000)) {
@@ -283,11 +291,14 @@ ${O.can(u, 'watchclock') ? `<section class="card">
     }
     tries.delete('door|' + req.session.knocker);
     req.session.username = u.username;
+    req.session.seen = Date.now();
+    require('../lib/ledger').note({ username: u.username, name: u.name }, 'entered the hall', '', 'entered');
     const to = String(req.body.to || '/hall');
     res.redirect(u.mustChange ? '/me/password' : (to.startsWith('/') && !to.startsWith('//') ? to : '/hall'));
   });
 
   app.post('/logout', checkCsrf, (req, res) => {
+    if (req.user) require('../lib/ledger').note(req.user, 'left the hall', '', 'left');
     req.session.username = null;
     req.session.flash = { text: 'You have left the hall.' };
     res.redirect('/');

@@ -14,7 +14,6 @@ app.disable('x-powered-by');
 app.use(cookieSession({
   name: 'bruma',
   keys: [C.SESSION_SECRET],
-  maxAge: 1000 * 60 * 60 * 24 * 14,
   sameSite: 'lax',
   secure: C.PRODUCTION,
   httpOnly: true
@@ -25,6 +24,17 @@ app.use(express.urlencoded({ extended: true, limit: '2mb', parameterLimit: 2000 
 
 app.use((req, res, next) => {
   if (!req.session.csrf) req.session.csrf = crypto.randomBytes(18).toString('hex');
+  if (req.session.username) {
+    const now = Date.now();
+    const seen = Number(req.session.seen) || 0;
+    if (!seen || now - seen > C.IDLE_MINUTES * 60 * 1000) {
+      req.session.username = null;
+      req.session.seen = null;
+      req.session.flash = { text: 'The hall closed while you were away. Enter again.' };
+    } else if (now - seen > 60 * 1000) {
+      req.session.seen = now;
+    }
+  }
   req.user = req.session.username ? U.sessionUser(req.session.username) : null;
   if (req.session.username && !req.user) req.session.username = null;
 
@@ -41,6 +51,8 @@ app.use((req, res, next) => {
   res.say = (title, text, status) => res.page({ title, body: V.message(title, text) }, status);
   next();
 });
+
+app.use(require('./lib/ledger').middleware);
 
 app.use((req, res, next) => {
   if (!req.user || !req.user.mustChange) return next();
@@ -126,6 +138,10 @@ try {
     const fixed = require('./lib/reports').mendParties();
     if (fixed) console.log('Set one party upon ' + fixed + ' report paper(s).');
   } catch (e) { console.error('Could not mend the report papers:', e.message); }
+  try {
+    const moved = require('./lib/guilds').mendShortLadders();
+    if (moved) console.log('Set ' + moved + ' guild member(s) upon the shortened ladders.');
+  } catch (e) { console.error('Could not mend the guild ladders:', e.message); }
 } catch (e) { console.error('Could not seed the Lex Brumae:', e.message); }
 
 if (require.main === module) {

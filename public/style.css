@@ -21,14 +21,15 @@
   --coolbg:#1E3038;--coolink:#AFD0DD;--cooledge:#32505C;
   --serif:Alegreya,Georgia,serif;
   --sans:'Alegreya Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;overflow-x:clip}
-body{margin:0;overflow-x:clip;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.6}
+body{margin:0;overflow-x:clip;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:17.5px;line-height:1.65}
 a{color:var(--link);text-decoration-color:rgba(232,184,112,.4)}
 a:hover{color:var(--linkhi)}
 
-.stamp{letter-spacing:.2em;text-transform:uppercase;font-size:11.5px;color:var(--eyebrow);white-space:nowrap}
+.stamp{font-family:var(--mono);letter-spacing:.18em;text-transform:uppercase;font-size:11px;color:var(--eyebrow);white-space:nowrap}
 .topright{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 .who{display:flex;flex-direction:column;line-height:1.25;margin-right:4px}
 .who b{font-weight:500;color:var(--warm);font-family:var(--serif);font-size:16px}
@@ -49,7 +50,7 @@ body.widepage{--measure:1240px}
 .mast{filter:drop-shadow(0 6px 14px rgba(0,0,0,.55))}
 .crest h1{margin:3px 0 4px;font-family:var(--serif);font-weight:500;font-size:44px;line-height:1.02}
 .crest h1 a{color:var(--bright);text-decoration:none}
-.eyebrow{font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:var(--eyebrow)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--eyebrow)}
 .seat{font-family:var(--serif);font-style:italic;font-size:17px;color:var(--soft)}
 
 .halls{background:var(--band);border-bottom:1px solid var(--edge);max-width:var(--measure);margin:0 auto}
@@ -89,7 +90,7 @@ h3{font-family:var(--serif);font-weight:500;font-size:25px;margin:26px 0 8px;col
 .btn[disabled]{opacity:.42;cursor:not-allowed}
 .btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
 
-label{display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--eyebrow);margin:16px 0 5px}
+label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--eyebrow);margin:16px 0 5px}
 input[type=text],input[type=password],input[type=number],input[type=date],select,textarea{
   width:100%;padding:11px 13px;border:1px solid var(--edge);background:#140F0A;color:var(--ink);
   font-family:var(--sans);font-size:16px;border-radius:2px}
@@ -109,13 +110,13 @@ details summary{color:var(--link)}
 .tablewrap{overflow-x:auto;margin:16px 0}
 table{width:100%;border-collapse:collapse;font-size:15.5px}
 th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--edge);vertical-align:top}
-th{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--eyebrow);
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--eyebrow);
   border-bottom:1px solid var(--edge2);white-space:nowrap;font-weight:500}
 tbody tr:hover{background:rgba(224,154,62,.05)}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 td a{font-family:var(--serif);font-size:17px}
 
-.tag{display:inline-block;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;
+.tag{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;
   padding:3px 9px;border-radius:2px;border:1px solid var(--edge2);background:var(--edge);color:var(--soft)}
 .tag.in{background:var(--goodbg);border-color:var(--goodedge);color:var(--goodink)}
 .tag.out{background:var(--badbg);border-color:var(--badedge);color:var(--badink)}
@@ -315,7 +316,7 @@ details > summary{transition:color .15s ease}
 .lexart:target{border-left-color:var(--linkhi);background:#241A10}
 .lexhead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px;
   padding-bottom:12px;border-bottom:1px solid var(--edge)}
-.lexno{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--eyebrow);
+.lexno{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--eyebrow);
   white-space:nowrap;flex:none}
 .lexhead h4{margin:0;font-family:var(--serif);font-weight:500;font-size:24px;color:var(--warm);
   flex:1 1 auto;line-height:1.2}
@@ -324,7 +325,7 @@ details > summary{transition:color .15s ease}
 .lexlink:hover{color:var(--accent)}
 .lexfield{margin:0 0 15px}
 .lexfield:last-child{margin-bottom:0}
-.lexlabel{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--eyebrow);margin-bottom:5px}
+.lexlabel{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--eyebrow);margin-bottom:5px}
 .lexfield p{margin:0;line-height:1.7;color:var(--ink);font-size:16.5px}
 .lextiers{display:flex;flex-direction:column;gap:7px;margin-top:3px}
 .lextier{display:flex;gap:12px;align-items:flex-start;padding:9px 12px;background:#17110C;
@@ -481,7 +482,7 @@ details.fold[open] > summary{border-bottom:1px solid var(--edge);margin-bottom:1
 .gaolcard,.petcard{margin:0}
 .gaolcard.over{border-left:3px solid #B9452F}
 .gaolhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.gno{font-size:11.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--eyebrow)}
+.gno{font-family:var(--mono);font-size:11px;letter-spacing:.17em;text-transform:uppercase;color:var(--eyebrow)}
 .gdays{margin-left:auto;font-size:12.5px;color:var(--faint)}
 .gaolcard h3 a,.petcard h3 a{text-decoration:none;color:var(--bright);font-family:var(--serif);font-weight:500}
 .gaolcard h3 a:hover{color:var(--linkhi)}
@@ -535,7 +536,7 @@ ol.career .cr::after{content:"";position:absolute;left:99px;top:6px;width:9px;he
   background:var(--edge2);border:1px solid var(--card)}
 ol.career .cr.commended::after,ol.career .cr.sworn::after{background:var(--accent)}
 ol.career .cr.reprimanded::after{background:#B9452F}
-.crwhen{flex:none;width:92px;text-align:right;font-size:12px;letter-spacing:.07em;color:var(--faint);
+.crwhen{flex:none;width:112px;text-align:right;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--faint);
   padding-top:3px;line-height:1.4}
 .crbody{flex:1 1 auto;min-width:0;padding-left:24px}
 .crkind{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
@@ -660,7 +661,7 @@ table.watchtable tr.live td{background:rgba(224,154,62,.045)}
 .brt i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--linkhi));border-radius:2px;
   animation:growbar .7s cubic-bezier(.22,.8,.3,1) both}
 @keyframes growbar{from{transform:scaleX(0);transform-origin:left}to{transform:scaleX(1)}}
-label.check{display:flex;gap:9px;align-items:center;text-transform:none;letter-spacing:0;font-size:14.5px;
+label.check{display:flex;gap:9px;align-items:center;text-transform:none;letter-spacing:0;font-family:var(--sans);font-size:14.5px;
   color:var(--ink);margin-top:10px}
 label.check input{width:auto;margin:0}
 
@@ -685,7 +686,7 @@ label.check input{width:auto;margin:0}
 .hcseat{font-size:12.5px;letter-spacing:.05em;color:var(--eyebrow);margin-bottom:11px}
 .hcblurb{margin:0 0 16px;font-size:14.5px;color:var(--faint);line-height:1.6;max-width:430px}
 .hcstats{display:flex;gap:30px;flex-wrap:wrap;margin-bottom:16px;padding-top:14px;border-top:1px solid var(--edge)}
-.hck{display:block;font-size:10.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--eyebrow);margin-bottom:4px}
+.hck{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.17em;text-transform:uppercase;color:var(--eyebrow);margin-bottom:4px}
 .hcv{display:block;font-family:var(--serif);font-size:17px;color:var(--warm);line-height:1.25}
 .hcv.vacant{color:var(--dim);font-style:italic}
 .hcbtns{display:flex;gap:9px;flex-wrap:wrap}
@@ -1034,3 +1035,9 @@ body.halldoor.going .doorplate,body.halldoor.going .doorfoot{opacity:0;transitio
   .doorrule{margin:13px auto 12px}
 }
 @media (prefers-reduced-motion:reduce){.dooreye .eye *{animation:none!important}}
+
+
+.wrap p,.wrap li,.wrap dd,.wrap .lede,.wrap .hint,.wrap .empty,.wrap .lexprose,.wrap blockquote{max-width:68ch}
+.wrap td p,.wrap td li,.wrap .tiles p,.wrap .stat,.wrap .hcstats p,.wrap .guildtile p,.wrap .duty p{max-width:none}
+.card p+p{margin-top:0}
+td.num,.num,.ptally,.tally{font-family:var(--mono);font-variant-numeric:tabular-nums}
