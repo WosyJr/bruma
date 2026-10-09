@@ -1041,3 +1041,35 @@ body.halldoor.going .doorplate,body.halldoor.going .doorfoot{opacity:0;transitio
 .wrap td p,.wrap td li,.wrap .tiles p,.wrap .stat,.wrap .hcstats p,.wrap .guildtile p,.wrap .duty p{max-width:none}
 .card p+p{margin-top:0}
 td.num,.num,.ptally,.tally{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---- The watch as a week grid ---- */
+.rotawrap{overflow-x:auto;margin-top:16px}
+.rota{display:grid;grid-template-columns:118px repeat(7,minmax(92px,1fr));gap:4px;min-width:860px;font-family:var(--sans)}
+.rota .corner{background:transparent}
+.rota .hd{padding:6px 8px;font-size:12px;color:var(--eyebrow);letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--edge);display:grid;gap:1px}
+.rota .hd small{font-size:11px;letter-spacing:0;text-transform:none;color:var(--dim)}
+.rota .hd.today{color:var(--accent);border-bottom-color:var(--accent)}
+.rota .post{padding:10px 6px 10px 0;font-size:13.5px;color:var(--bright);display:grid;gap:2px;align-content:start;border-right:1px solid var(--edge)}
+.rota .post small{font-size:11px;color:var(--dim)}
+.rota .cell{background:var(--card);border:1px solid var(--edge);border-radius:3px;padding:7px 8px;min-height:62px;display:grid;gap:5px;align-content:start;font-size:13px;min-width:0}
+.rota .cell.today{border-color:var(--accent)}
+.rota .cell.past{opacity:.78}
+.rota .cell.gap{background:var(--badbg);border-color:var(--badedge)}
+.rota .cell.gap.past{background:transparent;border-style:dashed}
+.rota .cell.over{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.rota .who{display:grid;gap:1px;min-width:0;position:relative;padding-right:18px}
+.rota .who .n{color:var(--bright);overflow-wrap:anywhere}
+.rota .who .h{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.rota .who.set .n::before{content:"\25CB  ";color:var(--eyebrow);font-size:10px}
+.rota .who.over .h{color:var(--accent)}
+.rota .who .drop{position:absolute;right:0;top:0;background:none;border:0;color:var(--dim);cursor:pointer;font-size:12px;padding:0 2px}
+.rota .who .drop:hover{color:var(--badink)}
+.rota .nobody{color:var(--badink);font-style:italic}
+.rota .cell.past .nobody{color:var(--dim)}
+.rota .take{margin:0}
+.rota .take .btn{padding:5px 6px;font-size:11px;width:100%;white-space:nowrap;letter-spacing:0}
+.rotakey{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:12px;font-size:12.5px;color:var(--dim)}
+.rotakey i{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:6px;border:1px solid var(--edge)}
+.rotakey i.g{background:var(--badbg);border-color:var(--badedge)}
+.rotakey i.o{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.rotakey i.s{border-radius:50%;border-color:var(--eyebrow)}

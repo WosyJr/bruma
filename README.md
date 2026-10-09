@@ -86,3 +86,7 @@ the map for a bigger one keeps every pin where it was.
     MASTER_USERNAME=wosy MASTER_PASSWORD=somethinglong npm start
 
 Then open http://localhost:3000.
+
+## Added lately
+
+- **Who stands where** (`/watch/week`): the watch as a week grid, one row per post, one column per day. Past days show what was stood; today and ahead show who is set. A gap is red with *Take this post*; a stand over sixteen hours gets an amber edge. Postings live in `watch-rota.json`.

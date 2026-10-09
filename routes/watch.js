@@ -41,6 +41,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     <div class="hhbtns">
       ${O.can(u, 'watchreport') || O.can(u, 'watchlog')
         ? `<a class="btn ghost" href="/watch/reports">Reports${rsum.live ? ' <b>' + rsum.live + '</b>' : ''}</a>` : ''}
+      <a class="btn ghost" href="/watch/week">Who stands where</a>
       ${seeAll ? '<a class="btn ghost" href="/watch/log">The whole log</a>' : ''}
       ${seeAll && O.can(u, 'watchroster') ? '<a class="btn ghost" href="/watch/roster">The roster</a>' : ''}
     </div>
@@ -292,6 +293,68 @@ ${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : '
       req.session.flash = { text: 'The shift is amended.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/watch/log');
+  }));
+
+  app.get('/watch/week', needAny('watchclock', 'watchlog'), (req, res) => {
+    const u = req.user;
+    const key = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.week || '')) ? W.weekKey(req.query.week + 'T12:00:00') : W.weekKey();
+    const g = W.weekGrid(key);
+    const mayAll = O.can(u, 'watchroster');
+    const mayTake = O.can(u, 'watchclock');
+    const shift = (k, n) => { const d = new Date(k + 'T12:00:00'); d.setDate(d.getDate() + n); return W.weekKey(d); };
+    const dayName = k => V.DAYS[new Date(k + 'T12:00:00').getDay()];
+    const dayDate = k => V.inworld(k + 'T12:00:00');
+    const cell = (row, c) => {
+      const people = c.people.map(x => `<div class="who${x.kind === 'set' ? ' set' : ''}${x.over ? ' over' : ''}">
+        <span class="n">${esc(x.name)}</span><span class="h">${esc(x.hours)}${x.over ? ' \u00b7 over ' + g.over + ' h' : ''}</span>
+        ${x.kind === 'set' && (x.who === u.username || mayAll) ? `<form method="post" action="/watch/week/drop" class="inline">${V.hidden(req.session.csrf)}<input type="hidden" name="id" value="${esc(x.id)}"><input type="hidden" name="week" value="${esc(g.key)}"><button type="submit" class="drop" title="Drop this posting" aria-label="Drop this posting">\u2715</button></form>` : ''}
+      </div>`).join('');
+      const take = !c.past && mayTake && !c.people.some(x => x.who === u.username)
+        ? `<form method="post" action="/watch/week/take" class="take">${V.hidden(req.session.csrf)}<input type="hidden" name="post" value="${esc(row.id)}"><input type="hidden" name="day" value="${esc(c.day)}"><input type="hidden" name="week" value="${esc(g.key)}"><button type="submit" class="btn small${c.gap ? ' go' : ' ghost'}">${c.gap ? 'Take this post' : 'Stand too'}</button></form>` : '';
+      return `<div class="cell${c.gap ? ' gap' : ''}${c.over ? ' over' : ''}${c.today ? ' today' : ''}${c.past ? ' past' : ''}">${people || `<span class="nobody">${c.past ? 'Nobody stood' : 'Nobody'}</span>`}${take}</div>`;
+    };
+    const body = `
+<section class="card hallhead">
+  <div class="hh">
+    <div>
+      <div class="eyebrow">The watch of Bruma \u00b7 week of the ${esc(dayDate(g.key))}</div>
+      <h2 style="margin:4px 0 8px">Who stands where</h2>
+      <p class="lede" style="margin:0;max-width:520px">One row for every post, one column for every day. Past days are what was stood; today and the days ahead are who is set. An empty cell is a post that needs a hand.</p>
+    </div>
+    <div class="hhbtns">
+      <a class="btn ghost" href="/watch/week?week=${esc(shift(g.key, -7))}">\u2190 Last week</a>
+      <a class="btn ghost" href="/watch/week">This week</a>
+      <a class="btn ghost" href="/watch/week?week=${esc(shift(g.key, 7))}">Next week \u2192</a>
+      <a class="btn ghost" href="/watch">The watch</a>
+    </div>
+  </div>
+</section>
+<section class="card">
+  <div class="tiles four">
+    <div class="stat"><div class="k">Posts with no hand this week</div><div class="v${g.gaps ? ' vacant' : ''}">${g.gaps}</div></div>
+    <div class="stat"><div class="k">Over ${g.over} hours</div><div class="v${g.rows.some(r => r.cells.some(c => c.over)) ? ' vacant' : ''}">${g.rows.reduce((n, r) => n + r.cells.filter(c => c.over).length, 0)}</div></div>
+  </div>
+  <div class="rotawrap"><div class="rota">
+    <div class="corner"></div>${g.days.map(d => `<div class="hd${d === g.today ? ' today' : ''}"><b>${esc(dayName(d))}</b><small>${esc(dayDate(d))}</small></div>`).join('')}
+    ${g.rows.map(r => `<div class="post">${esc(r.name)}<small>${r.cells.filter(c => !c.gap).length} of 7 days</small></div>${r.cells.map(c => cell(r, c)).join('')}`).join('')}
+  </div></div>
+  <div class="rotakey"><span><i class="g"></i>No one on post</span><span><i class="o"></i>Over ${g.over} hours in one stand</span><span><i class="s"></i>Set to stand, not yet clocked on</span></div>
+</section>`;
+    res.page({ title: 'Who stands where', body, active: 'watch' });
+  });
+
+  app.post('/watch/week/take', checkCsrf, need('watchclock'), wrap((req, res) => {
+    const b = req.body || {};
+    try { const r = W.takePost(req.user, String(b.post || ''), String(b.day || ''), b.from, b.to); req.session.flash = { text: 'You are set to stand ' + W.postName(r.post) + '.' }; }
+    catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/watch/week' + (b.week ? '?week=' + encodeURIComponent(b.week) : ''));
+  }));
+
+  app.post('/watch/week/drop', checkCsrf, need('watchclock'), wrap((req, res) => {
+    const b = req.body || {};
+    try { W.dropPost(String(b.id || ''), req.user, O.can(req.user, 'watchroster')); req.session.flash = { text: 'The posting is dropped.' }; }
+    catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/watch/week' + (b.week ? '?week=' + encodeURIComponent(b.week) : ''));
   }));
 
   app.get('/watch/roster', need('watchroster'), (req, res) => {
