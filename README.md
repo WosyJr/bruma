@@ -22,6 +22,7 @@ domain, its own variables and its own volume.
 | `DATA_DIR` | `/data` — must match the volume's mount path |
 | `NODE_ENV` | `production` |
 | `CURRENT_YEAR` | The year of the Fourth Era the County is in. Default 226. |
+| `GHOST_ODDS` | How rare the pale figure is: one page in this many. Default 200. |
 
 ### The volume
 
@@ -90,3 +91,18 @@ Then open http://localhost:3000.
 ## Added lately
 
 - **Who stands where** (`/watch/week`): the watch as a week grid, one row per post, one column per day. Past days show what was stood; today and ahead show who is set. A gap is red with *Take this post*; a stand over sixteen hours gets an amber edge. Postings live in `watch-rota.json`.
+
+## The town
+
+The front page carries **Bruma tonight** and a few things that belong to everyone.
+
+| Part | What it does |
+|---|---|
+| **Bruma tonight** | A drawing of the town at night. A window lights for each officer signed in within ten minutes; visitors see the light, officers see whose it is. A wall lamp burns for each guard on watch. What the town has built is drawn in. |
+| **The town's goal** (`/goal`) | An office with *Set the town's goals* names a goal and its sum, and may tie it to something drawn in the town: a bell, a beacon, banners, a statue or a new North Gate. Anyone may pledge. A pledge counts once the Steward marks it paid, after the septims change hands in game. When paid reaches the sum, it is built. |
+| **The pale figure** | Now and then a figure walks across the page for a few moments. Catch it and your name goes in the Herald. |
+| **The ballad** (`/ballad`) | One line a day from anyone. Each week has its own song; past weeks are sealed and kept. An office with the town power strikes a line. |
+| **Faces of Bruma** (`/faces`) | Anyone with the Hall puts up one portrait of their character with a line. One is shown on the front page each day. |
+| **The Jerall Herald** (`/herald`) | A weekly paper built from the site itself: watch hours, the top guard, gaps, the goal, figures caught, the ballad, proclamations, petitions, reports and the pass. An office with the Herald power adds a lead story. Past weeks stay readable. |
+
+New powers to tick on offices, under **The Town**: *Set the town's goals and mark pledges handed over*, *Write the lead story of the Jerall Herald*, *Take down ballad lines and portraits*. Data lives in `town-goals.json`, `town-ghost.json`, `town-ballad.json`, `town-faces.json` (pictures in `faces/`) and `town-herald.json`.

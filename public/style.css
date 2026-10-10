@@ -1115,3 +1115,78 @@ td.num,.num,.ptally,.tally{font-family:var(--mono);font-variant-numeric:tabular-
   .rota .pop,.rota .cell.r .pop{position:static;width:auto;box-shadow:none;margin-top:6px;padding:6px 0 0;border:0;border-top:1px solid var(--edge);border-radius:0;background:transparent}
   .rota .pop td:nth-child(2){font-size:9.5px}
 }
+.towncard{padding:22px 24px}
+.towngrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:22px;align-items:center}
+.townscene{width:100%;height:auto;display:block;border-radius:4px;border:1px solid var(--edge)}
+.townscene .twin{fill:#241A12;stroke:#120C08;stroke-width:1;transition:fill .6s}
+.townscene .twin.on{fill:#FFC46A;filter:url(#tglow)}
+.townright{display:grid;gap:12px}
+.tstat{font-family:var(--serif);font-size:42px;line-height:1;color:var(--accent)}
+.tstat.small{font-size:30px}
+.goalcard h3{font-size:23px}
+.gbar{height:12px;border-radius:6px;background:var(--band);border:1px solid var(--edge);overflow:hidden}
+.gbar i{display:block;height:100%;background:linear-gradient(90deg,#8A5A12,var(--accent))}
+.pledgeform{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.pledgeform input{flex:1 1 140px;min-width:0}
+.pledgelist{list-style:none;margin:12px 0;padding:0;display:grid;gap:8px}
+.pledgelist li{border-bottom:1px solid var(--edge);padding-bottom:6px}
+.pledgelist li.paid b{color:var(--goodink)}
+.facecard .faceday{display:flex;gap:12px;align-items:center}
+.faceday img{width:72px;height:96px;object-fit:cover;border:3px solid var(--edge2);border-radius:2px}
+.faceday b{display:block;font-family:var(--serif);font-size:19px;color:var(--bright)}
+.faceday span{font-size:13.5px;color:var(--dim)}
+.faceline{font-family:var(--serif);font-style:italic;font-size:17px;margin:10px 0 0;color:var(--soft)}
+.facegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-top:16px}
+.facetile{margin:0;border:1px solid var(--edge);background:var(--band);display:grid}
+.facetile.today{outline:2px solid var(--accent);outline-offset:2px}
+.facetile img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.facetile figcaption{padding:8px 10px;display:grid;gap:3px;font-size:14px}
+.facetile b{font-family:var(--serif);font-size:18px;color:var(--bright);font-weight:500}
+.facetile span{color:var(--dim)}
+.facetile i{color:var(--soft)}
+.picprev{display:block;max-width:180px;border:1px solid var(--edge2)}
+.linkish{background:none;border:0;padding:0;color:var(--link);font:inherit;font-size:12px;cursor:pointer;text-decoration:underline}
+.balladsheet{background:#E9DDBF;color:#2B1B0E;padding:22px 28px;border-radius:2px;font-family:var(--serif);font-size:19px;line-height:1.55;box-shadow:0 8px 20px rgba(0,0,0,.4);max-width:720px;margin-top:16px}
+.balladsheet h3{color:#5A1A12;font-size:25px;margin:0 0 10px}
+.bline{display:flex;justify-content:space-between;gap:14px;align-items:baseline}
+.bline small{font-family:var(--mono);font-size:10.5px;color:#7A6648;white-space:nowrap}
+.bline .linkish{color:#8A1E1E}
+.bempty{font-style:italic;color:#7A6648}
+.balladsheet.sealed{position:relative}
+.sealmark{margin-top:14px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8A1E1E}
+.heraldwrap{display:grid;gap:12px}
+.heraldnav{display:flex;justify-content:space-between;gap:10px}
+.herald{background:#EDE3CC;color:#1E150C;padding:28px 32px;border-radius:2px;box-shadow:0 10px 30px rgba(0,0,0,.5);font-family:var(--serif)}
+.herald a{color:#6B1414}
+.hmast{text-align:center;border-bottom:3px double #1E150C;padding-bottom:10px;margin-bottom:14px}
+.hmast h2{font-family:var(--serif);font-weight:700;font-size:clamp(36px,6vw,58px);color:#1E150C;line-height:1;letter-spacing:.01em;margin:0}
+.hmast p{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin:8px 0 0}
+.hcols{columns:3 230px;column-gap:28px;column-rule:1px solid #B5A47F}
+.hcols article{break-inside:avoid;margin-bottom:18px}
+.hcols h4{font-family:var(--serif);font-size:21px;font-weight:700;margin:0 0 4px;line-height:1.15;color:#1E150C}
+.hcols p{font-size:16px;line-height:1.45;margin:0 0 6px}
+.hcols .fig{font-family:var(--mono);font-size:30px;text-align:center;border:1px solid #1E150C;padding:4px;margin:6px 0}
+.hcols .leadstory{column-span:all;border-bottom:1px solid #B5A47F;padding-bottom:12px}
+.hcols .leadstory h4{font-size:30px}
+.hcols .byline{font-style:italic;color:#5A4128}
+.hface{display:flex;gap:10px;align-items:flex-start}
+.hface img{width:64px;height:84px;object-fit:cover;filter:grayscale(1) sepia(.4);border:1px solid #1E150C}
+.ghostwalk{position:fixed;left:0;right:0;bottom:0;height:120px;pointer-events:none;z-index:60}
+.ghostfig{position:absolute;bottom:14px;left:-90px;width:56px;height:86px;background:none;border:0;padding:0;cursor:pointer;pointer-events:auto;opacity:0}
+.ghostfig svg{width:100%;height:100%;filter:drop-shadow(0 0 14px rgba(190,220,255,.75))}
+.ghostwalk.go .ghostfig{animation:ghostdrift 14s linear forwards;opacity:.8}
+@keyframes ghostdrift{0%{left:-90px;opacity:0}8%{opacity:.8}92%{opacity:.8}100%{left:calc(100% + 40px);opacity:0}}
+.ghostform{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--card);border:1px solid var(--edge2);padding:14px 18px;border-radius:4px;box-shadow:0 10px 30px rgba(0,0,0,.6);display:grid;gap:8px;pointer-events:auto;width:min(420px,calc(100% - 32px))}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+@media (prefers-reduced-motion:reduce){.ghostwalk.go .ghostfig{animation-duration:30s}}
+@media (max-width:760px){.towngrid{grid-template-columns:1fr}.herald{padding:20px 18px}}
+.townsolo{margin-top:22px}
+.townsolo .facecard{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 22px;align-items:center}
+.townsolo .facecard .eyebrow{grid-column:1/-1}
+.townsolo .facecard .faceline{margin:0}
+@media (max-width:560px){.townsolo .facecard{grid-template-columns:1fr}}
+.towncard{margin-top:22px}
+.hallcols.even{align-items:stretch}
+.hallcols.even > div{display:flex;flex-direction:column}
+.hallcols.even > div > .card:last-child{flex:1}
+@media (max-width:1040px){.hallcols.even > div > .card:last-child{flex:none}}

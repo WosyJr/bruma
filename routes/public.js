@@ -82,7 +82,17 @@ module.exports = function (app, { checkCsrf, wrap, back }) {
   </a>`).join('')}
 </div>
 
-<div class="hallcols" style="margin-top:34px">
+${require('../lib/townviews').front(req.user, req.session.csrf, {
+  online: require('../lib/town').online(),
+  lamps: W.onDuty().length,
+  built: require('../lib/town').built(),
+  goal: require('../lib/town').current(),
+  face: require('../lib/town').faceOfDay(),
+  whose: title ? title + '\u2019s' : 'County\u2019s',
+  mayGoals: O.can(req.user, 'goals')
+})}
+
+<div class="hallcols even" style="margin-top:34px">
   <div>
     <section class="card wordcard">
       <div class="eyebrow" style="margin-bottom:8px">The word of ${esc(whose)}</div>
@@ -299,6 +309,7 @@ ${O.can(u, 'watchclock') ? `<section class="card">
 
   app.post('/logout', checkCsrf, (req, res) => {
     if (req.user) require('../lib/ledger').note(req.user, 'left the hall', '', 'left');
+    if (req.user) require('../lib/town').forget(req.user.username);
     req.session.username = null;
     req.session.flash = { text: 'You have left the hall.' };
     res.redirect('/');

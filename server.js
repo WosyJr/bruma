@@ -37,12 +37,19 @@ app.use((req, res, next) => {
   }
   req.user = req.session.username ? U.sessionUser(req.session.username) : null;
   if (req.session.username && !req.user) req.session.username = null;
+  if (req.user) require('./lib/town').touch(req.user);
 
   res.page = (opts, status) => {
     const flash = req.session.flash;
     req.session.flash = null;
+    let ghostHtml = '';
+    if (req.method === 'GET' && (status || 200) === 200 && !opts.noGhost) {
+      const tok = require('./lib/town').ghostRoll(req.session);
+      if (tok) ghostHtml = require('./lib/townviews').ghost(tok, req.session.csrf, req.user);
+    }
     res.status(status || 200).send(V.layout({
       ...opts,
+      body: (opts.body || '') + ghostHtml,
       user: req.user,
       csrf: req.session.csrf,
       flash: opts.flash || flash
@@ -108,6 +115,7 @@ require('./routes/licences')(app, ctx);
 require('./routes/service')(app, ctx);
 require('./routes/verify')(app, ctx);
 require('./routes/archive')(app, ctx);
+require('./routes/town')(app, ctx);
 require('./routes/admin')(app, ctx);
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
