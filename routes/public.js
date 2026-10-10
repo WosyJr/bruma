@@ -67,6 +67,17 @@ module.exports = function (app, { checkCsrf, wrap, back }) {
   </div>
 </section>
 
+${(() => {
+  const Tn = require('../lib/town');
+  const face = Tn.faceOfDay();
+  const key = req.user ? 'u:' + req.user.username : (req.session.cheerKey ? 's:' + req.session.cheerKey : '');
+  return require('../lib/townviews').honour(req.user, req.session.csrf, {
+    face,
+    cheers: face ? Tn.cheersOn(Tn.dayKey(), face.id) : 0,
+    cheered: !!(face && key && Tn.cheered(face.id, key))
+  });
+})()}
+
 <div class="rule">
   <div class="line"></div>
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M11 2c3 4 5 6 5 9a5 5 0 0 1-10 0c0-3 2-5 5-9Z" fill="#E09A3E"/></svg>
@@ -87,7 +98,6 @@ ${require('../lib/townviews').front(req.user, req.session.csrf, {
   lamps: W.onDuty().length,
   built: require('../lib/town').built(),
   goal: require('../lib/town').current(),
-  face: require('../lib/town').faceOfDay(),
   whose: title ? title + '\u2019s' : 'County\u2019s',
   mayGoals: O.can(req.user, 'goals')
 })}
