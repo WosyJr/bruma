@@ -304,22 +304,48 @@ ${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : '
     const shift = (k, n) => { const d = new Date(k + 'T12:00:00'); d.setDate(d.getDate() + n); return W.weekKey(d); };
     const dayName = k => V.DAYS[new Date(k + 'T12:00:00').getDay()];
     const dayDate = k => V.inworld(k + 'T12:00:00');
-    const cell = (row, c) => {
-      const people = c.people.map(x => `<div class="who${x.kind === 'set' ? ' set' : ''}${x.over ? ' over' : ''}">
-        <span class="n">${esc(x.name)}</span><span class="h">${esc(x.hours)}${x.over ? ' \u00b7 over ' + g.over + ' h' : ''}</span>
-        ${x.kind === 'set' && (x.who === u.username || mayAll) ? `<form method="post" action="/watch/week/drop" class="inline">${V.hidden(req.session.csrf)}<input type="hidden" name="id" value="${esc(x.id)}"><input type="hidden" name="week" value="${esc(g.key)}"><button type="submit" class="drop" title="Drop this posting" aria-label="Drop this posting">\u2715</button></form>` : ''}
-      </div>`).join('');
-      const take = !c.past && mayTake && !c.people.some(x => x.who === u.username)
-        ? `<form method="post" action="/watch/week/take" class="take">${V.hidden(req.session.csrf)}<input type="hidden" name="post" value="${esc(row.id)}"><input type="hidden" name="day" value="${esc(c.day)}"><input type="hidden" name="week" value="${esc(g.key)}"><button type="submit" class="btn small${c.gap ? ' go' : ' ghost'}">${c.gap ? 'Take this post' : 'Stand too'}</button></form>` : '';
-      return `<div class="cell${c.gap ? ' gap' : ''}${c.over ? ' over' : ''}${c.today ? ' today' : ''}${c.past ? ' past' : ''}">${people || `<span class="nobody">${c.past ? 'Nobody stood' : 'Nobody'}</span>`}${take}</div>`;
+    const dur = m => { const h = Math.floor(m / 60), mm = Math.round(m % 60); return h + 'h' + String(mm).padStart(2, '0'); };
+    const groupOf = c => {
+      const map = new Map();
+      c.people.forEach(x => {
+        const g = map.get(x.who) || { who: x.who, name: x.name, minutes: 0, stints: 0, open: false, set: null, over: false };
+        if (x.kind === 'set') g.set = x;
+        else { g.minutes += x.minutes || 0; g.stints += 1; if (x.open) g.open = x; if (x.over) g.over = true; }
+        map.set(x.who, g);
+      });
+      return Array.from(map.values()).sort((a, b) => Number(!!b.open) - Number(!!a.open) || b.minutes - a.minutes);
     };
+    const tag = g => g.open ? esc(g.open.hours) : g.stints ? (g.stints > 1 ? '×' + g.stints + ' · ' : '') + dur(g.minutes) : g.set ? 'set' : '';
+    const takeForm = (row, c, label, cls) => `<form method="post" action="/watch/week/take" class="take">${V.hidden(req.session.csrf)}<input type="hidden" name="post" value="${esc(row.id)}"><input type="hidden" name="day" value="${esc(c.day)}"><input type="hidden" name="week" value="${esc(g.key)}"><button type="submit" class="${cls}">${label}</button></form>`;
+    const cell = (row, c) => {
+      const cls = ['cell', c.today ? 'today' : '', c.past ? 'past' : '', c.over ? 'over' : '', g.days.indexOf(c.day) >= 5 ? 'r' : ''];
+      const mayStand = !c.past && mayTake && !c.people.some(x => x.who === u.username);
+      if (!c.people.length) {
+        if (c.past) return `<div class="${cls.concat('none').join(' ')}"><span class="dash" title="Nobody stood">—</span></div>`;
+        return `<div class="${cls.concat('open').join(' ')}"><span>Open</span>${mayStand ? takeForm(row, c, 'Take it', 'takeit') : ''}</div>`;
+      }
+      const groups = groupOf(c);
+      const allSet = groups.every(x => !x.stints);
+      const line = x => `<div class="who${x.stints ? '' : ' set'}${x.over ? ' over' : ''}${x.open ? ' on' : ''}"><b>${esc(x.name)}</b><span>${tag(x)}</span></div>`;
+      const shown = groups.slice(0, 2).map(line).join('');
+      const extra = groups.length > 2 ? `<span class="more">+${groups.length - 2} more</span>` : '';
+      const detail = c.people.slice().sort((a, b) => String(a.hours).localeCompare(String(b.hours))).map(x => `<tr${x.over ? ' class="over"' : ''}><td>${esc(x.name)}${x.kind === 'set' ? ' <i>set</i>' : ''}</td><td>${esc(x.hours)}</td><td>${x.kind === 'set' && (x.who === u.username || mayAll) ? `<form method="post" action="/watch/week/drop" class="inline">${V.hidden(req.session.csrf)}<input type="hidden" name="id" value="${esc(x.id)}"><input type="hidden" name="week" value="${esc(g.key)}"><button type="submit" class="drop" title="Drop this posting" aria-label="Drop this posting">✕</button></form>` : ''}</td></tr>`).join('');
+      return `<div class="${cls.concat(allSet ? 'setonly' : '').join(' ')}">
+        <details class="stints"><summary>${shown}${extra}</summary>
+          <div class="pop" onclick="event.stopPropagation()"><div class="pt">${esc(row.name)} · ${esc(dayName(c.day))}</div><table>${detail}</table></div>
+        </details>
+        ${mayStand ? takeForm(row, c, 'Stand too', 'standtoo') : ''}
+      </div>`;
+    };
+    const covered = d => g.rows.filter(r => r.cells.some(c => c.day === d && c.people.length)).length;
+    const weekMinutes = g.rows.reduce((n, r) => n + r.cells.reduce((m, c) => m + c.people.reduce((k, x) => k + (x.kind === 'stood' ? x.minutes || 0 : 0), 0), 0), 0);
     const body = `
 <section class="card hallhead">
   <div class="hh">
     <div>
       <div class="eyebrow">The watch of Bruma \u00b7 week of the ${esc(dayDate(g.key))}</div>
       <h2 style="margin:4px 0 8px">Who stands where</h2>
-      <p class="lede" style="margin:0;max-width:520px">One row for every post, one column for every day. Past days are what was stood; today and the days ahead are who is set. An empty cell is a post that needs a hand.</p>
+      <p class="lede" style="margin:0;max-width:560px">Past days are what was stood; today and the days ahead are who is set. A dashed cell is a post that needs a hand. Tap any cell to see every stint.</p>
     </div>
     <div class="hhbtns">
       <a class="btn ghost" href="/watch/week?week=${esc(shift(g.key, -7))}">\u2190 Last week</a>
@@ -330,17 +356,18 @@ ${O.can(u, 'watchclock') ? `<section class="card onwatch${mine ? ' standing' : '
   </div>
 </section>
 <section class="card">
-  <div class="tiles four">
-    <div class="stat"><div class="k">Posts with no hand this week</div><div class="v${g.gaps ? ' vacant' : ''}">${g.gaps}</div></div>
-    <div class="stat"><div class="k">Over ${g.over} hours</div><div class="v${g.rows.some(r => r.cells.some(c => c.over)) ? ' vacant' : ''}">${g.rows.reduce((n, r) => n + r.cells.filter(c => c.over).length, 0)}</div></div>
+  <div class="rotastat">
+    <span><b${g.gaps ? ' class="vacant"' : ''}>${g.gaps}</b>${g.gaps === 1 ? 'post' : 'posts'} with no hand ahead</span>
+    <span><b>${dur(weekMinutes)}</b>stood this week</span>
+    <span><b${g.rows.some(r => r.cells.some(c => c.over)) ? ' class="vacant"' : ''}>${g.rows.reduce((n, r) => n + r.cells.filter(c => c.over).length, 0)}</b>over ${g.over} hours</span>
   </div>
   <div class="rotawrap"><div class="rota">
-    <div class="corner"></div>${g.days.map(d => `<div class="hd${d === g.today ? ' today' : ''}"><b>${esc(dayName(d))}</b><small>${esc(dayDate(d))}</small></div>`).join('')}
-    ${g.rows.map(r => `<div class="post">${esc(r.name)}<small>${r.cells.filter(c => !c.gap).length} of 7 days</small></div>${r.cells.map(c => cell(r, c)).join('')}`).join('')}
+    <div class="corner hd"><b>Post</b></div>${g.days.map(d => `<div class="hd${d === g.today ? ' today' : ''}"><b>${esc(dayName(d))}</b><small>${esc(dayDate(d))}${d === g.today ? ' \u00b7 today' : ''}</small><span class="cov" title="${covered(d)} of ${g.rows.length} posts held">${g.rows.map((r, n) => `<i${n < covered(d) ? ' class="on"' : ''}></i>`).join('')}</span></div>`).join('')}
+    ${g.rows.map(r => `<div class="post"><span class="pn">${esc(r.name)}</span><span class="dots">${r.cells.map(c => `<i${c.people.length ? ' class="on"' : ''}></i>`).join('')}</span><small>${r.cells.filter(c => !c.gap).length} of 7 days</small></div>${r.cells.map(c => cell(r, c)).join('')}`).join('')}
   </div></div>
-  <div class="rotakey"><span><i class="g"></i>No one on post</span><span><i class="o"></i>Over ${g.over} hours in one stand</span><span><i class="s"></i>Set to stand, not yet clocked on</span></div>
+  <div class="rotakey"><span><i class="t"></i>Today</span><span><i class="g"></i>Open, needs a hand</span><span><i class="s"></i>Set to stand, not yet clocked on</span><span><i class="o"></i>Over ${g.over} hours in one stand</span><span>\u2014 nobody stood</span><span>Tap a cell for every stint</span></div>
 </section>`;
-    res.page({ title: 'Who stands where', body, active: 'watch' });
+    res.page({ title: 'Who stands where', body, active: 'watch', wide: true });
   });
 
   app.post('/watch/week/take', checkCsrf, need('watchclock'), wrap((req, res) => {

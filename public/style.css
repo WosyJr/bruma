@@ -1042,34 +1042,76 @@ body.halldoor.going .doorplate,body.halldoor.going .doorfoot{opacity:0;transitio
 .card p+p{margin-top:0}
 td.num,.num,.ptally,.tally{font-family:var(--mono);font-variant-numeric:tabular-nums}
 
-/* ---- The watch as a week grid ---- */
-.rotawrap{overflow-x:auto;margin-top:16px}
-.rota{display:grid;grid-template-columns:118px repeat(7,minmax(92px,1fr));gap:4px;min-width:860px;font-family:var(--sans)}
-.rota .corner{background:transparent}
-.rota .hd{padding:6px 8px;font-size:12px;color:var(--eyebrow);letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--edge);display:grid;gap:1px}
-.rota .hd small{font-size:11px;letter-spacing:0;text-transform:none;color:var(--dim)}
-.rota .hd.today{color:var(--accent);border-bottom-color:var(--accent)}
-.rota .post{padding:10px 6px 10px 0;font-size:13.5px;color:var(--bright);display:grid;gap:2px;align-content:start;border-right:1px solid var(--edge)}
+.rotastat{display:flex;flex-wrap:wrap;gap:8px 28px;font-size:14px;color:var(--muted);font-family:var(--sans)}
+.rotastat b{font-family:var(--serif);font-size:24px;font-weight:700;color:var(--accent);margin-right:7px;vertical-align:-2px}
+.rotastat b.vacant{color:var(--badink)}
+.rotawrap{overflow-x:auto;margin-top:14px;border:1px solid var(--edge);border-radius:3px;-webkit-overflow-scrolling:touch}
+.rota{display:grid;grid-template-columns:136px repeat(7,minmax(112px,1fr));min-width:930px;font-family:var(--sans);font-size:13px}
+.rota>div{border-right:1px solid var(--edge);border-bottom:1px solid var(--edge);min-width:0}
+.rota .hd{padding:9px 10px 8px;background:var(--band);display:grid;gap:1px;align-content:start;position:sticky;top:0;z-index:2}
+.rota .hd b{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--eyebrow);font-weight:500}
+.rota .hd small{font-size:11.5px;color:var(--dim)}
+.rota .hd.today{box-shadow:inset 0 -2px 0 var(--accent)}
+.rota .hd.today b,.rota .hd.today small{color:var(--accent)}
+.rota .hd .cov{display:flex;gap:2px;margin-top:6px}
+.rota .hd .cov i{flex:1;height:4px;background:var(--edge)}
+.rota .hd .cov i.on{background:var(--accent)}
+.rota .corner{left:0;z-index:3}
+.rota .post{position:sticky;left:0;z-index:1;background:var(--band);padding:10px 12px;display:grid;gap:4px;align-content:start}
+.rota .post .pn{font-family:var(--serif);font-size:15.5px;color:var(--bright);line-height:1.2}
+.rota .post .dots{display:flex;gap:3px}
+.rota .post .dots i{width:8px;height:8px;border-radius:50%;background:var(--edge2)}
+.rota .post .dots i.on{background:var(--accent)}
 .rota .post small{font-size:11px;color:var(--dim)}
-.rota .cell{background:var(--card);border:1px solid var(--edge);border-radius:3px;padding:7px 8px;min-height:62px;display:grid;gap:5px;align-content:start;font-size:13px;min-width:0}
-.rota .cell.today{border-color:var(--accent)}
-.rota .cell.past{opacity:.78}
-.rota .cell.gap{background:var(--badbg);border-color:var(--badedge)}
-.rota .cell.gap.past{background:transparent;border-style:dashed}
-.rota .cell.over{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
-.rota .who{display:grid;gap:1px;min-width:0;position:relative;padding-right:18px}
-.rota .who .n{color:var(--bright);overflow-wrap:anywhere}
-.rota .who .h{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
-.rota .who.set .n::before{content:"\25CB  ";color:var(--eyebrow);font-size:10px}
-.rota .who.over .h{color:var(--accent)}
-.rota .who .drop{position:absolute;right:0;top:0;background:none;border:0;color:var(--dim);cursor:pointer;font-size:12px;padding:0 2px}
-.rota .who .drop:hover{color:var(--badink)}
-.rota .nobody{color:var(--badink);font-style:italic}
-.rota .cell.past .nobody{color:var(--dim)}
+.rota .cell{background:var(--card);padding:7px 9px;min-height:58px;display:grid;gap:5px;align-content:start;position:relative}
+.rota .cell.today{background:#2A1E13;box-shadow:inset 0 0 0 1px var(--accent)}
+.rota .cell.over{box-shadow:inset 0 0 0 1px var(--badedge)}
+.rota .cell.none{display:grid;place-items:center;background:var(--ground)}
+.rota .cell.none .dash{color:var(--edge2);font-size:15px}
+.rota .cell.open{background:var(--ground);display:flex;justify-content:space-between;align-items:center;gap:6px;padding:0;position:relative}
+.rota .cell.open::before{content:"";position:absolute;inset:6px;border:1px dashed var(--edge2);border-radius:2px;pointer-events:none}
+.rota .cell.open>span{padding-left:14px;color:var(--dim);font-size:12px}
+.rota .cell.open .take{padding-right:12px}
+.rota .takeit{background:none;border:0;padding:4px 0;color:var(--accent);font:500 12.5px var(--sans);cursor:pointer}
+.rota .takeit:hover{text-decoration:underline}
+.rota .standtoo{background:none;border:0;padding:0;color:var(--dim);font:12px var(--sans);cursor:pointer;justify-self:start}
+.rota .standtoo:hover{color:var(--link)}
 .rota .take{margin:0}
-.rota .take .btn{padding:5px 6px;font-size:11px;width:100%;white-space:nowrap;letter-spacing:0}
+.rota details.stints>summary{list-style:none;cursor:pointer;display:grid;gap:3px}
+.rota details.stints>summary::-webkit-details-marker{display:none}
+.rota .who{display:grid;gap:0;min-width:0;margin:0;line-height:1.25}
+.rota .who b{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.rota .who span{font-family:var(--mono);font-size:10.5px;color:var(--dim);white-space:nowrap;flex:none}
+.rota .who.set b{color:#F2D6A8}
+.rota .who.set b::before{content:"\25CB  ";color:var(--eyebrow);font-size:9px}
+.rota .who.set span{color:var(--eyebrow)}
+.rota .who.on span{color:var(--goodink)}
+.rota .who.over span{color:var(--badink)}
+.rota .more{font-size:11.5px;color:var(--eyebrow)}
+.rota details.stints[open]>summary .more{visibility:hidden}
+.rota .pop{position:absolute;top:calc(100% - 4px);left:-1px;width:270px;z-index:6;background:var(--card);border:1px solid var(--edge2);border-radius:3px;box-shadow:0 14px 34px rgba(0,0,0,.6);padding:10px 12px;cursor:default}
+.rota .cell.r .pop{left:auto;right:-1px}
+.rota details.stints[open]>summary{outline:1px solid var(--edge2);outline-offset:3px}
+.rota .pop .pt{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--eyebrow);margin-bottom:3px}
+.rota .pop table{width:100%;border-collapse:collapse;font-size:12px;color:var(--ink)}
+.rota .pop td{padding:2px 0;border-bottom:1px solid var(--edge);vertical-align:top}
+.rota .pop td:nth-child(2){font-family:var(--mono);font-size:10.5px;color:var(--dim);text-align:right;white-space:nowrap;padding-left:6px}
+.rota .pop td:nth-child(3){width:14px;text-align:right}
+.rota .pop tr.over td:nth-child(2){color:var(--badink)}
+.rota .pop i{font-style:normal;font-size:10px;color:var(--eyebrow)}
+.rota .drop{background:none;border:0;color:var(--dim);cursor:pointer;font-size:11px;padding:0 0 0 4px}
+.rota .drop:hover{color:var(--badink)}
 .rotakey{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:12px;font-size:12.5px;color:var(--dim)}
-.rotakey i{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:6px;border:1px solid var(--edge)}
-.rotakey i.g{background:var(--badbg);border-color:var(--badedge)}
-.rotakey i.o{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
-.rotakey i.s{border-radius:50%;border-color:var(--eyebrow)}
+.rotakey i{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:6px;border:1px solid var(--edge)}
+.rotakey i.t{background:#2A1E13;border-color:var(--accent)}
+.rotakey i.g{border:1px dashed var(--edge2)}
+.rotakey i.o{border-color:var(--badedge);box-shadow:inset 0 0 0 1px var(--badedge)}
+.rotakey i.s{border-radius:50%;width:10px;border-color:var(--eyebrow)}
+.rota .who span{font-size:10px}
+@media (max-width:640px){
+  .rota{grid-template-columns:104px repeat(7,minmax(108px,1fr));min-width:860px}
+  .rota .post{padding:9px 8px}
+  .rota .post .pn{font-size:14px}
+  .rota .pop,.rota .cell.r .pop{position:static;width:auto;box-shadow:none;margin-top:6px;padding:6px 0 0;border:0;border-top:1px solid var(--edge);border-radius:0;background:transparent}
+  .rota .pop td:nth-child(2){font-size:9.5px}
+}
