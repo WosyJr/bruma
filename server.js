@@ -51,7 +51,8 @@ app.use((req, res, next) => {
     }
     res.status(status || 200).send(V.layout({
       ...opts,
-      body: (opts.body || '') + ghostHtml,
+      body: opts.body || '',
+      after: ghostHtml,
       user: req.user,
       csrf: req.session.csrf,
       flash: opts.flash || flash

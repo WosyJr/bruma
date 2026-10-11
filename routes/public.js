@@ -165,7 +165,7 @@ ${require('../lib/townviews').front(req.user, req.session.csrf, {
     : `<p><a class="btn ghost" href="/login">Enter the Hall</a></p>`}
 </section>`;
 
-    res.page({ title: '', body, active: '' });
+    res.page({ title: '', body, active: '', noDoors: true });
   });
 
   app.get('/hall', (req, res) => {

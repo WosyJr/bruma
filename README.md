@@ -25,7 +25,7 @@ domain, its own variables and its own volume.
 | `GHOST_ODDS` | How rare the pale figure is: one page in this many. Default 200. |
 | `DISCORD_WEBHOOK` | Optional. A Discord webhook address for the public news channel (channel settings, Integrations, Webhooks, New Webhook, Copy Webhook URL). |
 | `DISCORD_OFFICERS_WEBHOOK` | Optional. A second webhook, for a channel only officers can see. |
-| `DISCORD_WEBHOOK_A` … `DISCORD_WEBHOOK_F` | Optional. Up to six more channels. Each one set appears on `/discord`, where it can be named and any kind of post sent to it. |
+| `DISCORD_WEBHOOK_A` … `DISCORD_WEBHOOK_F` | Optional. Up to six more channels. None of the webhook variables is needed any more: every channel's address can be pasted on `/discord` instead, where it is kept in `discord.json` on the volume and shown only masked. An address set on the site wins over the Railway variable for that slot. |
 | `SITE_URL` | Optional. The site's own address, e.g. `https://bruma.up.railway.app`, so Discord posts link back and carry portraits. Learned from the first visit if not set. |
 | `TIMEZONE` | The clock the County keeps: the day on the banner, the ballad's one line a day, the Face of the Day and the Herald's week all turn over at midnight here. Default `America/New_York`. |
 
@@ -115,9 +115,17 @@ The front page carries **Bruma tonight** and a few things that belong to everyon
 
 New powers to tick on offices, under **The Town**: *Set the town's goals and mark pledges handed over*, *Write the lead story of the Jerall Herald*, *Approve sent-in portraits, and take down ballad lines and portraits*, *Award honours to officers, withdraw them, and add new honours to the roll*. Data lives in `town-goals.json`, `town-ghost.json`, `town-ballad.json`, `town-faces.json` (pictures in `faces/`), `town-cheers.json`, `town-cards.json`, `town-bones.json`, `town-herald.json`, `honours.json` and `honour-types.json`.
 
+## The top bar, the town's doors and the gate
+
+Officers' pages have a grouped bar: *The Great Hall* and *The Watch* stay as plain links, and the rest sit under *The Coffers* (treasury, tax roll, licences, property), *Law* (court, gaol, reckoner, petitions), *The People* (people, guilds, service, officers) and *The County* (proclaim, archive, announcements, flourishes), each a menu with a one-line hint. *The Public Face* stays at the right. Visitors keep the flat public bar.
+
+Under the Pale Pass line on every page but the front, a row of six doors leads to the Herald, the ballad, the faces, the inn, the honours and the goal. An amber dot on a door means something is new there since that browser last looked.
+
+On the Proclaim page, *Cry it at the gate* (ticked by default) makes the proclamation meet everyone who next opens the site, as a writ over the page. *I have read it* puts it away for good (remembered on the login for officers, in the browser for visitors, in `gate-seen.json`); *Later* keeps it away until tomorrow. Never more than one a visit; older unread ones wait their turn.
+
 ## Discord announcements
 
-`/discord` (the new power *Choose what the County announces on Discord*) shows every connected channel (the two named webhooks plus `DISCORD_WEBHOOK_A` to `_F`), lets the Steward name each channel, tick which of 22 kinds of post run and choose the channel each kind goes to, previews each one exactly as Discord will show it, posts a test or a sample on demand, and lists what was lately sent. Every post carries its own banner from `public/discord/` (a 1200×300 painting for each kind) and the County seal as its face; proclamations, judgments and honours quote their text in a block.
+`/discord` (the new power *Choose what the County announces on Discord*) shows one card per channel (up to eight). On each the Steward pastes the channel's webhook address (or leaves it to Railway), names it, and sends a test to see where it lands; when an address is saved the site asks Discord what the webhook is called and shows that too. The Steward then tick which of 22 kinds of post run and choose the channel each kind goes to, previews each one exactly as Discord will show it, posts a test or a sample on demand, and lists what was lately sent. Every post carries its own banner from `public/discord/` (a 1200×300 painting for each kind, with the County's flag hanging on it) and `public/discord/seal.png` as its face; proclamations, judgments and honours quote their text in a block, names are in bold, and each post ends with an arrow link back to the page it came from.
 
 Sent to the public channel unless moved: proclamations, the Pale Pass changing state, judgments, the gaol (names and writ numbers only, never the grounds), new laws, town goals set and built, the pale figure caught, honours, oaths and raises, Lantern of the Watch milestones, five-in-a-row at Twenty-one, and on a schedule (Eastern time) the Face of the Day at 8 each morning, the Herald and the inn's champions on Sundas at 8 in the evening, and last week's ballad just after midnight on Morndas.
 

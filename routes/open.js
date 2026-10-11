@@ -555,6 +555,7 @@ ${faces.map(f => `<section class="card guildface">
     </div>
     <label for="text">The proclamation</label>
     <textarea id="text" name="text" style="min-height:220px" required></textarea>
+    <label class="check" style="margin-top:10px"><input type="checkbox" name="cry" value="1" checked> <b>Cry it at the gate</b> <span class="hint">It meets everyone who next opens the site, once, as a writ over the page. Untick it for routine notices.</span></label>
     <div class="btnrow"><button class="btn go" type="submit">Proclaim it</button></div>
   </form>
 </section>
@@ -583,6 +584,11 @@ ${V.passSetter(req.session.csrf, '/proclaim')}
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/proclaim');
   }));
+
+  app.post('/gate/seen', checkCsrf, (req, res) => {
+    if (req.user) { try { Pr.gateMark(req.user.username, String((req.body || {}).id || '')); } catch (e) {} }
+    res.status(204).end();
+  });
 
   app.post('/proclaim/pass', checkCsrf, need('proclaim'), wrap((req, res) => {
     Pr.setPass(req.body, req.user);

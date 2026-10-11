@@ -113,7 +113,7 @@
   }
 
   var seen = [];
-  var numbers = document.querySelectorAll('.stat .v, .big');
+  var numbers = document.querySelectorAll('.stat .v, .big:not(.rib)');
   if (!numbers.length) return;
 
   if (!('IntersectionObserver' in window)) {
@@ -323,3 +323,74 @@ document.addEventListener('change', function (e) {
   var opt = sel.options[sel.selectedIndex];
   if (fee && opt && opt.getAttribute('data-fee')) fee.value = opt.getAttribute('data-fee');
 });
+
+(function () {
+  var grps = document.querySelectorAll('[data-grp]');
+  if (!grps.length) return;
+  Array.prototype.forEach.call(grps, function (d) {
+    d.addEventListener('toggle', function () {
+      if (!d.open) return;
+      Array.prototype.forEach.call(grps, function (o) { if (o !== d) o.removeAttribute('open'); });
+    });
+  });
+  document.addEventListener('click', function (e) {
+    Array.prototype.forEach.call(grps, function (d) { if (d.open && !d.contains(e.target)) d.removeAttribute('open'); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') Array.prototype.forEach.call(grps, function (d) { d.removeAttribute('open'); });
+  });
+})();
+
+(function () {
+  var doors = document.querySelectorAll('[data-door]');
+  if (!doors.length) return;
+  var get = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  var set = function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} };
+  Array.prototype.forEach.call(doors, function (a) {
+    var key = 'door:' + a.getAttribute('data-door');
+    var stamp = a.getAttribute('data-stamp') || '';
+    var dot = a.querySelector('.dot');
+    var was = get(key);
+    if (stamp && was !== null && was !== stamp && dot) dot.hidden = false;
+    if (was === null) set(key, stamp);
+    a.addEventListener('click', function () { set(key, stamp); });
+  });
+  var here = document.querySelector('[data-door="' + location.pathname + '"]');
+  if (here) set('door:' + location.pathname, here.getAttribute('data-stamp') || '');
+})();
+
+(function () {
+  var box = document.getElementById('gate');
+  var src = document.getElementById('gatewrits');
+  if (!box || !src) return;
+  var writs;
+  try { writs = JSON.parse(src.textContent); } catch (e) { return; }
+  var get = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  var set = function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} };
+  var today = new Date().toISOString().slice(0, 10);
+  var pick = null;
+  for (var i = 0; i < writs.length; i++) {
+    var w = writs[i];
+    if (get('gate:' + w.id) === 'read') continue;
+    if (get('gate:' + w.id) === 'later:' + today) continue;
+    pick = w; break;
+  }
+  if (!pick) return;
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  box.querySelector('[data-gate-ey]').textContent = 'By the hand of the County · Proclamation no. ' + pick.no;
+  box.querySelector('[data-gate-title]').textContent = pick.title;
+  box.querySelector('[data-gate-text]').innerHTML = pick.text.split('\n').map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '<p><a href="' + esc(pick.href) + '">Read it in full →</a></p>';
+  box.querySelector('[data-gate-sig]').textContent = pick.hand + (pick.dated ? ' · ' + pick.dated : '');
+  box.hidden = false;
+  document.body.style.overflow = 'hidden';
+  var close = function () { box.hidden = true; document.body.style.overflow = ''; };
+  var tell = function () {
+    var form = document.querySelector('input[name=_csrf]');
+    if (!form) return;
+    try { fetch('/gate/seen', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: '_csrf=' + encodeURIComponent(form.value) + '&id=' + encodeURIComponent(pick.id), credentials: 'same-origin' }); } catch (e) {}
+  };
+  box.querySelector('[data-gate-read]').addEventListener('click', function () { set('gate:' + pick.id, 'read'); tell(); close(); });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-gate-later]'), function (b) { b.addEventListener('click', function () { set('gate:' + pick.id, 'later:' + today); close(); }); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) { set('gate:' + pick.id, 'later:' + today); close(); } });
+  var rb = box.querySelector('[data-gate-read]'); if (rb) rb.focus();
+})();
