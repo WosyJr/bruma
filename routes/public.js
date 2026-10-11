@@ -172,6 +172,7 @@ ${require('../lib/townviews').front(req.user, req.session.csrf, {
 
   app.get('/hall', (req, res) => {
     if (!req.user) return res.redirect('/login?to=/hall');
+    if (req.user.member) return res.redirect('/guilds/' + req.user.member.guild);
     const u = req.user;
     const mine = W.openShift(u.username);
     const myWeek = W.thisWeek().find(r => r.who === u.username);
@@ -315,8 +316,10 @@ ${O.can(u, 'watchclock') ? `<section class="card">
     req.session.username = u.username;
     req.session.seen = Date.now();
     require('../lib/ledger').note({ username: u.username, name: u.name }, 'entered the hall', '', 'entered');
-    const to = String(req.body.to || '/hall');
-    res.redirect(u.mustChange ? '/me/password' : (to.startsWith('/') && !to.startsWith('//') ? to : '/hall'));
+    const su = U.sessionUser(u.username);
+    const home = su && su.member ? '/guilds/' + su.member.guild : '/hall';
+    const to = String(req.body.to || home);
+    res.redirect(u.mustChange ? '/me/password' : (to.startsWith('/') && !to.startsWith('//') ? to : home));
   });
 
   app.post('/logout', checkCsrf, (req, res) => {

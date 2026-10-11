@@ -5,13 +5,34 @@ const Lad = require('../lib/guildladder');
 const T = require('../lib/treasury');
 const Tax = require('../lib/taxes');
 const GM = require('../lib/guildmap');
+const U = require('../lib/users');
 
 const esc = V.esc;
 
 module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
+  const seeGuild = (req, res, next) => {
+    if (!req.user) return res.redirect('/login?to=' + encodeURIComponent(req.originalUrl));
+    if (O.can(req.user, 'guildsee') || O.can(req.user, 'guildown') || req.user.member || (req.user.alsoGuilds || []).length) return next();
+    next('forbidden');
+  };
+  const loginCard = (req, gid) => {
+    const n = req.session.newLogin;
+    if (!n || n.guild !== gid) return '';
+    req.session.newLogin = null;
+    return `<section class="card logincard" role="status">
+  <div class="eyebrow">A login for ${esc(n.name)}</div>
+  <h3 style="margin:4px 0 10px">Give these to them in game</h3>
+  <div class="logins">
+    <div><span class="k">Name to enter with</span><b data-copyme>${esc(n.username)}</b><button type="button" class="btn ghost small" data-copy>Copy</button></div>
+    <div><span class="k">Word to get in</span><b data-copyme>${esc(n.password)}</b><button type="button" class="btn ghost small" data-copy>Copy</button></div>
+  </div>
+  <p class="hint">This is shown once. They sign in at the County’s door, set their own word, and see ${esc((O.GUILD_BY_ID[gid] || {}).name || 'their guild')} and the public pages, nothing else.${n.reset ? ' Their old word no longer works.' : ''}</p>
+</section>`;
+  };
 
-  app.get('/guilds', needAny('guildsee', 'guildown'), (req, res) => {
+  app.get('/guilds', seeGuild, (req, res) => {
     const u = req.user;
+    if (u.member) return res.redirect('/guilds/' + u.member.guild);
     const mine = O.guildOf(u);
     const feed = G.recent(8);
 
@@ -42,7 +63,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     </article>`;
     };
 
-    const body = `
+    const body = `${loginCard(req, g.id)}${u.member ? `<section class="card memberbar"><span>You enter as <b>${esc(u.member.code)} ${esc(u.member.rankName)}</b> of ${esc(g.name)}.</span><span class="hint">${mayAdmit ? 'You may admit and promote, post contracts and keep the map.' : (mayKeep ? 'You may post contracts and keep the hall’s map.' : 'You see what the hall shows its members: the charter, the ladder, the open contracts and every pin on the hall’s map.')}</span></section>` : ''}
 <section class="card hallhead">
   <div class="eyebrow">Chartered under the Guilds Act</div>
   <h2 style="margin:4px 0 8px">The Guilds of Bruma</h2>
@@ -82,7 +103,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     res.page({ title: 'The Guilds', body, active: 'guilds', wide: true });
   });
 
-  app.get('/guilds/:id', needAny('guildsee', 'guildown'), (req, res) => {
+  app.get('/guilds/:id', seeGuild, (req, res) => {
     const u = req.user;
     const g = O.GUILD_BY_ID[req.params.id];
     if (!g) return res.say('No such guild', 'No body of that name holds charter in the County.', 404);
@@ -99,6 +120,11 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     const struck = G.struckRoll(g.id);
     const mapId = GM.MAP_BY_ID[req.query.map] ? req.query.map : 'county';
     const theMap = GM.MAP_BY_ID[mapId];
+    const officerKeep = O.officerKeeps(u, g.id);
+    const mayKeep = O.mayKeepGuild(u, g.id);
+    const mayAdmit = O.mayAdmitGuild(u, g.id);
+    const myStep = u.member ? u.member.step : 99;
+    const showRoll = !u.member || mayKeep;
     const marks = GM.all(g.id, mapId);
     const byMap = GM.countByMap(g.id);
     const msum = GM.summary(g.id);
@@ -126,9 +152,9 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     };
     const taken = G.contracts(g.id).filter(c => c.state === 'taken').slice(0, 8);
 
-    const mayKeep = O.can(u, 'guildsee') || (O.can(u, 'guildown') && O.guildOf(u) === g.id);
     const mayCharter = O.can(u, 'guildcharter');
-    const mayPurse = O.can(u, 'treasread') || (O.can(u, 'guildpurse') && O.guildOf(u) === g.id);
+    const mayPurse = !u.member && (O.can(u, 'treasread') || (O.can(u, 'guildpurse') && O.guildOf(u) === g.id));
+    const logins = Object.fromEntries(U.listMembers(g.id).map(x => [x.member.id, x]));
 
     const ledger = mayPurse ? T.forGuild(g.id) : [];
     const rendered = ledger.filter(r => r.way === 'in').reduce((n, r) => n + r.amount, 0);
@@ -137,12 +163,12 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     const owing = assessments.filter(a => a.state === 'owing' || a.state === 'part')
       .reduce((n, a) => n + Math.max(0, (Number(a.amount) || 0) - (Number(a.paid) || 0)), 0);
 
-    const mineStep = (() => {
+    const mineStep = u.member ? u.member.step : (() => {
       const me = roll.find(m => m.name.toLowerCase() === String(u.name || '').toLowerCase());
       return me ? me.step : -1;
     })();
 
-    const body = `
+    const body = `${loginCard(req, g.id)}${u.member ? `<section class="card memberbar"><span>You enter as <b>${esc(u.member.code)} ${esc(u.member.rankName)}</b> of ${esc(g.name)}.</span><span class="hint">${mayAdmit ? 'You may admit and promote, post contracts and keep the map.' : (mayKeep ? 'You may post contracts and keep the hall’s map.' : 'You see what the hall shows its members: the charter, the ladder, the open contracts and every pin on the hall’s map.')}</span></section>` : ''}
 <section class="card hallhead">
   <div class="hh">
     <div>
@@ -330,30 +356,33 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
   </div>
 
   <aside>
-    <section class="card tight">
+    ${showRoll ? `<section class="card tight">
       <div class="eyebrow" style="margin-bottom:10px">The roll</div>
-      ${roll.length ? `<div class="rollrows">${roll.map(m => mayKeep ? `<details class="rmem">
+      ${roll.length ? `<div class="rollrows">${roll.map(m => mayAdmit && m.step <= myStep ? `<details class="rmem">
         <summary>
           <span class="rrn"><b>${esc(m.name)}</b><i>${esc(m.rankName)}${m.trade ? ' · ' + esc(m.trade) : ''}</i></span>
           <span class="tag ${(G.STANDING_BY_ID[m.standing] || {}).tag || ''}">${esc(G.standingName(m.standing))}</span>
         </summary>
         <form method="post" action="/guilds/${esc(g.id)}/members/${esc(m.id)}">${V.hidden(req.session.csrf)}
-          <label><span>Rank</span><select name="rank">${ladder.map(r =>
+          <label><span>Rank</span><select name="rank">${ladder.filter(r => r.step <= myStep).map(r =>
             `<option value="${r.id}"${r.id === m.rank ? ' selected' : ''}>${esc(r.code)} — ${esc(r.name)}</option>`).join('')}</select></label>
           <label><span>Standing</span><select name="standing">${G.STANDINGS.map(x =>
             `<option value="${x.id}"${x.id === m.standing ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
           <label><span>Trade</span><input name="trade" type="text" maxlength="100" value="${esc(m.trade)}"></label>
           <div class="btnrow"><button class="btn small" type="submit">Set it down</button></div>
         </form>
+        <div class="loginrow">${logins[m.id] ? `<span class="hint">Enters as <b>${esc(logins[m.id].username)}</b>${logins[m.id].lastLogin ? ' · last in ' + esc(V.when(logins[m.id].lastLogin)) : ' · not in yet'}</span>
+          <form method="post" action="/guilds/${esc(g.id)}/members/${esc(m.id)}/login" class="inline">${V.hidden(req.session.csrf)}<button class="btn ghost small" type="submit">New word</button></form>` : `<span class="hint">No login yet.</span>
+          <form method="post" action="/guilds/${esc(g.id)}/members/${esc(m.id)}/login" class="inline">${V.hidden(req.session.csrf)}<button class="btn go small" type="submit">Give them a login</button></form>`}</div>
         <form method="post" action="/guilds/${esc(g.id)}/members/${esc(m.id)}/strike" class="strikerow">${V.hidden(req.session.csrf)}
           <button class="btn danger small" type="submit">Strike from the roll</button>
-          <span class="hint">They come off the roll. The record is kept and can be put back.</span>
+          <span class="hint">They come off the roll and their login stops working. The record is kept and can be put back.</span>
         </form>
       </details>` : `<div class="rr">
         <div class="rrn"><b>${esc(m.name)}</b><i>${esc(m.rankName)}${m.trade ? ' · ' + esc(m.trade) : ''}</i></div>
         <span class="tag ${(G.STANDING_BY_ID[m.standing] || {}).tag || ''}">${esc(G.standingName(m.standing))}</span>
       </div>`).join('')}</div>` : V.empty('Nobody stands on this roll.')}
-      ${mayKeep && struck.length ? `<details class="fold" style="margin-top:14px">
+      ${mayAdmit && struck.length ? `<details class="fold" style="margin-top:14px">
         <summary>Struck from the roll · ${struck.length}</summary>
         <div class="rollrows" style="margin-top:12px">${struck.map(m => `<div class="rr">
           <div class="rrn"><b>${esc(m.name)}</b><i>${esc(m.rankName)}${
@@ -366,20 +395,21 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
           </span>
         </div>`).join('')}</div>
       </details>` : ''}
-      ${mayKeep ? `<details class="fold" style="margin-top:14px">
+      ${mayAdmit ? `<details class="fold" style="margin-top:14px">
         <summary>Admit someone</summary>
         <form method="post" action="/guilds/${esc(g.id)}/admit">${V.hidden(req.session.csrf)}
           <label for="mname">Their name</label>
           <input id="mname" name="name" type="text" maxlength="100" required>
           <label for="mgrade">At what rank</label>
-          <select id="mgrade" name="grade">${ladder.map(r =>
+          <select id="mgrade" name="grade">${ladder.filter(r => r.step <= myStep).map(r =>
             `<option value="${r.id}"${r.id === 'a' ? ' selected' : ''}>${esc(r.code)} — ${esc(r.name)}</option>`).join('')}</select>
           <label for="mtrade">Their trade, if it is worth saying</label>
           <input id="mtrade" name="trade" type="text" maxlength="100">
+          <label class="check"><input type="checkbox" name="login" value="1" checked> Give them a login to the hall</label>
           <div class="btnrow"><button class="btn" type="submit">Admit them</button></div>
         </form>
       </details>` : ''}
-    </section>
+    </section>` : ''}
 
     <section class="card tight" id="contracts">
       <div class="eyebrow" style="margin-bottom:10px">Contracts open</div>
@@ -437,7 +467,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
 
     <section class="card tight">
       <div class="btnrow" style="flex-direction:column;align-items:stretch">
-        <a class="btn ghost" href="/guilds">All the guilds</a>
+        ${u.member ? '' : '<a class="btn ghost" href="/guilds">All the guilds</a>'}
         <a class="btn ghost" href="/the-guilds">What the public sees</a>
       </div>
     </section>
@@ -446,19 +476,46 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     res.page({ title: g.name, body, active: 'guilds', wide: true });
   });
 
-  app.post('/guilds/:id/admit', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+  const stepOf = (u, gid, rank) => { const r = Lad.rankOf(gid, Lad.normalise(gid, rank)); return r ? r.step : 0; };
+  const overMe = (u, gid, rank) => u.member && stepOf(u, gid, rank) > u.member.step;
+
+  app.post('/guilds/:id/admit', checkCsrf, seeGuild, wrap((req, res) => {
     const g = O.GUILD_BY_ID[req.params.id];
     try {
-      if (!g || !O.maySeeGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
+      if (!g || !O.mayAdmitGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
+      if (overMe(req.user, g.id, req.body.grade)) throw new Error('You cannot admit anyone above your own rank.');
       const m = G.admit(req.params.id, req.body, req.user);
-      req.session.flash = { text: m.name + ' is admitted to ' + g.name + '.' };
+      let extra = '';
+      if (req.body.login) {
+        try { const l = U.createMember({ guild: g.id, memberId: m.id, name: m.name }); req.session.newLogin = { guild: g.id, name: m.name, username: l.username, password: l.password }; extra = ' Their login is below.'; }
+        catch (e) { extra = ' No login was made: ' + e.message; }
+      }
+      req.session.flash = { text: m.name + ' is admitted to ' + g.name + '.' + extra };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/guilds/' + req.params.id);
   }));
 
-  app.post('/guilds/:id/members/:mid', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+  app.post('/guilds/:id/members/:mid/login', checkCsrf, seeGuild, wrap((req, res) => {
+    const g = O.GUILD_BY_ID[req.params.id];
     try {
-      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
+      if (!g || !O.mayAdmitGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
+      const m = G.memberOf(req.params.mid);
+      if (!m || m.guild !== g.id || m.struck) throw new Error('Nobody of that name stands on this roll.');
+      if (overMe(req.user, g.id, m.rank)) throw new Error('They stand above you.');
+      const had = U.memberLogin(m.id);
+      const l = had ? U.resetMember(m.id) : U.createMember({ guild: g.id, memberId: m.id, name: m.name });
+      req.session.newLogin = { guild: g.id, name: m.name, username: l.username, password: l.password, reset: !!had };
+      req.session.flash = { text: had ? 'A new word for ' + m.name + ' is below.' : m.name + ' has a login. It is below.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/guilds/' + req.params.id);
+  }));
+
+  app.post('/guilds/:id/members/:mid', checkCsrf, seeGuild, wrap((req, res) => {
+    try {
+      if (!O.mayAdmitGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
+      const cur = G.memberOf(req.params.mid);
+      if (!cur || cur.guild !== req.params.id) throw new Error('Nobody of that name stands on this roll.');
+      if (overMe(req.user, req.params.id, cur.rank) || (req.body.rank !== undefined && overMe(req.user, req.params.id, req.body.rank))) throw new Error('You cannot raise anyone above your own rank, nor amend those above you.');
       const patch = Object.assign({}, req.body);
       const putBack = patch.struck !== undefined && !patch.struck;
       if (patch.struck !== undefined) patch.struck = !!patch.struck;
@@ -468,9 +525,12 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     res.redirect('/guilds/' + req.params.id);
   }));
 
-  app.post('/guilds/:id/members/:mid/strike', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+  app.post('/guilds/:id/members/:mid/strike', checkCsrf, seeGuild, wrap((req, res) => {
     try {
-      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
+      if (!O.mayAdmitGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
+      const cur = G.memberOf(req.params.mid);
+      if (!cur || cur.guild !== req.params.id) throw new Error('Nobody of that name stands on this roll.');
+      if (overMe(req.user, req.params.id, cur.rank)) throw new Error('They stand above you.');
       const m = G.amendMember(req.params.mid, { struck: true }, req.user);
       req.session.flash = { text: m.name + ' is struck from the roll. The record is kept.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
@@ -481,33 +541,34 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     try {
       if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That roll is not yours to keep.');
       const m = G.removeMember(req.params.mid);
+      U.removeMemberLogin(m.id);
       req.session.flash = { text: m.name + ' is erased from the book entirely.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/guilds/' + req.params.id);
   }));
 
-  app.post('/guilds/:id/contracts', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+  app.post('/guilds/:id/contracts', checkCsrf, seeGuild, wrap((req, res) => {
     try {
-      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That hall is not yours to keep.');
+      if (!O.mayKeepGuild(req.user, req.params.id)) throw new Error('That hall is not yours to keep.');
       const c = G.postContract(req.params.id, req.body, req.user);
       req.session.flash = { text: 'Contract posted: ' + c.title + '.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/guilds/' + req.params.id + '#contracts');
   }));
 
-  app.post('/guilds/:id/contracts/:cid', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+  app.post('/guilds/:id/contracts/:cid', checkCsrf, seeGuild, wrap((req, res) => {
     try {
-      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That hall is not yours to keep.');
+      if (!O.mayKeepGuild(req.user, req.params.id)) throw new Error('That hall is not yours to keep.');
       const c = G.setContract(req.params.cid, req.body, req.user);
       req.session.flash = { text: c.state === 'taken' ? c.takenBy + ' has taken it.' : 'The contract is set down as ' + c.state + '.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/guilds/' + req.params.id + '#contracts');
   }));
 
-  app.post('/guilds/:id/marks', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+  app.post('/guilds/:id/marks', checkCsrf, seeGuild, wrap((req, res) => {
     const backTo = '/guilds/' + req.params.id + '?map=' + encodeURIComponent(req.body.map || 'county') + '#map-section';
     try {
-      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That map is not yours to keep.');
+      if (!O.mayKeepGuild(req.user, req.params.id)) throw new Error('That map is not yours to keep.');
       const m = GM.place(req.params.id, req.body, req.user);
       req.session.flash = { text: m.name + ' is set upon the map of ' + GM.mapName(m.map).toLowerCase() + '.' };
       return res.redirect('/guilds/' + req.params.id + '?map=' + encodeURIComponent(m.map) + '&m=' + encodeURIComponent(m.id) + '#map-section');
@@ -515,9 +576,9 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     res.redirect(backTo);
   }));
 
-  app.post('/guilds/:id/marks/:mid', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+  app.post('/guilds/:id/marks/:mid', checkCsrf, seeGuild, wrap((req, res) => {
     try {
-      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That map is not yours to keep.');
+      if (!O.mayKeepGuild(req.user, req.params.id)) throw new Error('That map is not yours to keep.');
       const m = GM.get(req.params.mid);
       if (!m || m.guild !== req.params.id) throw new Error('No such mark upon this map.');
       GM.amend(req.params.mid, req.body, req.user);
@@ -526,9 +587,9 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     res.redirect('/guilds/' + req.params.id + '?map=' + encodeURIComponent(req.body.map || 'county') + '&m=' + encodeURIComponent(req.params.mid) + '#map-section');
   }));
 
-  app.post('/guilds/:id/marks/:mid/strike', checkCsrf, needAny('guildsee', 'guildown'), wrap((req, res) => {
+  app.post('/guilds/:id/marks/:mid/strike', checkCsrf, seeGuild, wrap((req, res) => {
     try {
-      if (!O.maySeeGuild(req.user, req.params.id)) throw new Error('That map is not yours to keep.');
+      if (!O.mayKeepGuild(req.user, req.params.id)) throw new Error('That map is not yours to keep.');
       const m = GM.get(req.params.mid);
       if (!m || m.guild !== req.params.id) throw new Error('No such mark upon this map.');
       GM.strike(req.params.mid);

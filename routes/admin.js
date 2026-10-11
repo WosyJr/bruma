@@ -116,6 +116,15 @@ ${full ? `<section class="card">
   </form>
 </section>
 
+${full ? `<section class="card">
+  <h3 style="margin-top:0">Other guild halls they may see</h3>
+  <p class="lede">${(O.get(p.office) || {}).guild ? 'They keep ' + esc(O.GUILD_BY_ID[O.get(p.office).guild].name) + ' through their office. ' : ''}Tick any other hall they may look into. They see it whole but cannot change anything there.</p>
+  <form method="post" action="/officers/${esc(p.username)}/guilds">${V.hidden(req.session.csrf)}
+    <div class="checks">${O.GUILDS.filter(g => g.id !== (O.get(p.office) || {}).guild).map(g => `<label class="check"><input type="checkbox" name="guilds" value="${g.id}"${(p.alsoGuilds || []).includes(g.id) ? ' checked' : ''}> ${esc(g.name)}</label>`).join('')}</div>
+    <div class="btnrow"><button class="btn" type="submit">Set it</button></div>
+  </form>
+</section>` : ''}
+
 <section class="card">
   <h3 style="margin-top:0">Give them a new word</h3>
   <p class="lede">They will have to set their own the next time they enter.</p>
@@ -164,6 +173,15 @@ ${full ? `<section class="card">
       }
       if (before && before.name !== after.name) Sv.renameWho(after.username, after.name);
       req.session.flash = { text: 'The rolls are amended.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/officers/' + encodeURIComponent(req.params.username));
+  }));
+
+  app.post('/officers/:username/guilds', checkCsrf, need('officers'), wrap((req, res) => {
+    try {
+      const raw = req.body.guilds;
+      const p = U.setAlsoGuilds(req.params.username, raw === undefined ? [] : raw);
+      req.session.flash = { text: p.alsoGuilds.length ? p.name + ' may also look into ' + p.alsoGuilds.map(g => O.GUILD_BY_ID[g].name).join(', ') + '.' : p.name + ' sees no other hall.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/officers/' + encodeURIComponent(req.params.username));
   }));

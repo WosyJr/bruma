@@ -139,7 +139,7 @@ module.exports = function (app, { checkCsrf, need }) {
       } else if (['accept', 'turn', 'forget', 'device', 'nodevice'].includes(what)) {
         const r = I.decide(req.params.id, what, req.user);
         const n = r.patron.name;
-        req.session.flash = { text: { accept: n + ' is let in. Fill their purse once they hand over coin.', turn: n + ' is turned away.', forget: n + ' is forgotten. The name is free to ask again.', device: n + ' can sit down from that browser now.', nodevice: 'That browser is turned away. ' + n + '’s seat and purse are untouched.' }[what] };
+        req.session.flash = { text: { accept: n + ' is let in. Fill their purse once they hand over coin.', turn: n + ' is turned away.', forget: n + ' is forgotten. The name is free to ask again.' + (r.writtenOff ? ' ' + I.septims(r.writtenOff) + ' was written off their purse.' : ''), device: n + ' can sit down from that browser now.', nodevice: 'That browser is turned away. ' + n + '’s seat and purse are untouched.' }[what] };
       } else return res.status(404).end();
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/inn/ledger');

@@ -1964,3 +1964,15 @@ html{scroll-behavior:smooth}
 @media (max-width:640px){.lseats{grid-template-columns:repeat(2,minmax(0,1fr))}.lhand .pcard{width:36px;height:52px}.lhand .pcard b{font-size:16px}.hssreveal .hssico svg{width:48px;height:48px}}
 @media (prefers-reduced-motion:reduce){.coinbig.flipping,.hssreveal.show .hssico{animation:none}}
 .kgrid{max-width:560px;margin:0 auto}
+.logincard{border-color:var(--accent);background:linear-gradient(180deg,rgba(224,154,62,.12),transparent)}
+.logins{display:grid;gap:10px;margin:6px 0 10px}
+.logins div{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.logins .k{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--eyebrow);min-width:150px}
+.logins b{font:500 20px var(--mono);color:var(--bright);user-select:all;overflow-wrap:anywhere}
+.memberbar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:12px 18px}
+.loginrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px}
+.checks{display:flex;flex-wrap:wrap;gap:8px 18px;margin:6px 0 10px}
+.livetoast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;max-width:min(560px,calc(100vw - 32px));animation:toastin .25s ease-out;transition:opacity .5s,transform .5s;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.livetoast .flash{margin:0}
+.livetoast.out{opacity:0;transform:translate(-50%,10px)}
+@keyframes toastin{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}

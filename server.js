@@ -32,20 +32,22 @@ app.use((req, res, next) => {
       req.session.username = null;
       req.session.seen = null;
       req.session.flash = { text: 'The hall closed while you were away. Enter again.' };
-    } else if (now - seen > 60 * 1000) {
+    } else if (now - seen > 60 * 1000 && !(req.path === '/live/v' || req.get('X-Live'))) {
       req.session.seen = now;
     }
   }
   req.user = req.session.username ? U.sessionUser(req.session.username) : null;
   if (req.session.username && !req.user) req.session.username = null;
-  if (req.user) require('./lib/town').touch(req.user);
+  const liveAsk = req.path === '/live/v' || !!req.get('X-Live');
+  req.live = liveAsk;
+  if (req.user && !liveAsk) require('./lib/town').touch(req.user);
   require('./lib/discord').seen(req);
 
   res.page = (opts, status) => {
     const flash = req.session.flash;
     req.session.flash = null;
     let ghostHtml = '';
-    if (req.method === 'GET' && (status || 200) === 200 && !opts.noGhost) {
+    if (req.method === 'GET' && (status || 200) === 200 && !opts.noGhost && !req.live) {
       const tok = require('./lib/town').ghostRoll(req.session);
       if (tok) ghostHtml = require('./lib/townviews').ghost(tok, req.session.csrf, req.user);
     }
@@ -134,6 +136,7 @@ require('./lib/announce').install();
 }
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
+app.get('/live/v', (req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json({ v: require('./lib/store').version() }); });
 
 app.use((req, res) => res.say('No such hall', 'Nothing in the County answers to that path.', 404));
 

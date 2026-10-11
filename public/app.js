@@ -1,6 +1,7 @@
-(function () {
+function initMap() {
   var map = document.getElementById('map');
-  if (!map) return;
+  if (!map || map.dataset.ready) return;
+  map.dataset.ready = '1';
 
   var pins = map.querySelectorAll('.pin');
   var form = document.getElementById('enterform');
@@ -78,7 +79,8 @@
     var name = document.getElementById('name');
     if (name) name.focus();
   });
-})();
+}
+initMap();
 
 (function () {
   var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -395,11 +397,116 @@ document.addEventListener('change', function (e) {
   var rb = box.querySelector('[data-gate-read]'); if (rb) rb.focus();
 })();
 
-(function () {
+function initOwn() {
   var sels = document.querySelectorAll('[data-own-toggle]');
   Array.prototype.forEach.call(sels, function (s) {
     var box = document.getElementById(s.getAttribute('data-own-toggle'));
-    if (!box) return;
+    if (!box || s.dataset.ready) return;
+    s.dataset.ready = '1';
     s.addEventListener('change', function () { box.hidden = s.value !== 'own'; if (s.value === 'own') { var i = box.querySelector('input[type=url]'); if (i) i.focus(); } });
   });
+}
+initOwn();
+
+(function () {
+  var main = document.querySelector('main.wrap');
+  if (!main || !window.fetch || !window.DOMParser || !window.URLSearchParams) return;
+  var own = !!(main.querySelector('script') || document.getElementById('inn') || document.getElementById('room') || document.querySelector('[data-livetables], [data-nolive]'));
+  if (own) return;
+  var v = null, busy = false, dirty = false, pending = false;
+  main.addEventListener('input', function (e) { if (e.target.closest('form')) dirty = true; });
+  main.addEventListener('change', function (e) { if (e.target.closest('form')) dirty = true; });
+
+  function toast(html) {
+    var t = document.createElement('div');
+    t.className = 'livetoast';
+    t.setAttribute('role', 'status');
+    t.innerHTML = html;
+    document.body.appendChild(t);
+    setTimeout(function () { t.classList.add('out'); }, 3800);
+    setTimeout(function () { t.remove(); }, 4400);
+  }
+  var touched = 0;
+  main.addEventListener('pointerdown', function () { touched = Date.now(); });
+  main.addEventListener('keydown', function () { touched = Date.now(); });
+  function keyOf(d, i) { var s = d.querySelector('summary'); return (s ? s.textContent.replace(/\s+/g, ' ').trim() : '') || ('#' + i); }
+  function opened() { var o = {}; main.querySelectorAll('details').forEach(function (d, i) { if (d.open) o[keyOf(d, i)] = 1; }); return o; }
+  function swap(html, showFlash) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var nm = doc.querySelector('main.wrap');
+    if (!nm) return false;
+    var flash = nm.querySelector('.flash');
+    if (flash && showFlash) { toast(flash.outerHTML); }
+    if (flash && !showFlash) flash.remove();
+    var cur = main.cloneNode(true);
+    var cf = cur.querySelector('.flash'); if (cf) cf.remove();
+    if (!showFlash && cur.innerHTML === nm.innerHTML) return true;
+    var open = opened();
+    var y = window.scrollY;
+    var oldFlash = main.querySelector('.flash');
+    if (showFlash && flash && oldFlash) oldFlash.remove();
+    if (flash && showFlash) flash.remove();
+    main.innerHTML = nm.innerHTML;
+    main.querySelectorAll('details').forEach(function (d, i) { if (open[keyOf(d, i)]) d.open = true; });
+    window.scrollTo(0, y);
+    var ns = doc.querySelector('.passstrip, .pass'), os = document.querySelector('.passstrip, .pass');
+    if (ns && os && ns.outerHTML !== os.outerHTML) os.outerHTML = ns.outerHTML;
+    dirty = false;
+    initMap(); initOwn();
+    return true;
+  }
+  function editing() {
+    var a = document.activeElement;
+    if (a && main.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'submit' && a.type !== 'button') return true;
+    return dirty || !!document.getElementById('placing') || Date.now() - touched < 4000;
+  }
+  function refresh() {
+    if (busy) return;
+    if (editing()) { pending = true; return; }
+    busy = true; pending = false;
+    fetch(window.location.href, { credentials: 'same-origin', headers: { 'X-Live': '1' } })
+      .then(function (r) { if (!r.ok || r.redirected) throw new Error(r.status); return r.text(); })
+      .then(function (h) { if (!editing()) swap(h, false); else pending = true; })
+      .catch(function () {})
+      .then(function () { busy = false; });
+  }
+  function tick() {
+    if (document.hidden) return;
+    fetch('/live/v', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (v !== null && j.v !== v) refresh(); else if (pending) refresh(); v = j.v; })
+      .catch(function () {});
+  }
+  tick();
+  setInterval(tick, 4000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
+
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (!main.contains(f)) return;
+    if ((f.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+    try { sessionStorage.setItem('liveScroll', JSON.stringify({ path: window.location.pathname, y: window.scrollY, at: Date.now() })); } catch (err) {}
+  });
+  (function () {
+    var saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem('liveScroll') || 'null'); sessionStorage.removeItem('liveScroll'); } catch (err) {}
+    if (!saved || saved.path !== window.location.pathname || Date.now() - saved.at > 20000) return;
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    window.scrollTo(0, saved.y);
+    requestAnimationFrame(function () { window.scrollTo(0, saved.y); });
+    var fl = main.querySelector('.flash');
+    if (fl && saved.y > 200) toast(fl.outerHTML);
+  })();
+
+  window.BrumaInit = function () { initMap(); initOwn(); };
 })();
+
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-copy]');
+  if (!b) return;
+  var src = b.parentNode.querySelector('[data-copyme]');
+  if (!src) return;
+  var t = src.textContent;
+  var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); };
+  try { navigator.clipboard.writeText(t).then(done, function () {}); } catch (err) {}
+});
