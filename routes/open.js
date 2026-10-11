@@ -275,7 +275,7 @@ ${!lex.length && !other.length ? V.empty('No laws or charters have been set down
         <div style="font-family:Alegreya,Georgia,serif;font-size:22px;color:var(--warm);margin-bottom:5px">${esc(o.name)}</div>
         <div style="font-size:15px;color:var(--faint);line-height:1.55;margin-bottom:9px">${esc(o.note || '')}</div>
         ${held.length
-          ? held.map(p => `<div style="font-size:16px;color:var(--ink)">${esc(p.name)}${p.style ? ' <span style="color:var(--faint);font-size:14px">· ' + esc(p.style) + '</span>' : ''}</div>`).join('')
+          ? held.map(p => `<div style="font-size:16px;color:var(--ink)">${esc(p.name)}${p.style ? ' <span style="color:var(--faint);font-size:14px">· ' + esc(p.style) + '</span>' : ''} ${require('../lib/honours').ribbons(p.username)}</div>`).join('')
           : '<div style="font-size:15px;color:var(--faint);font-style:italic">Vacant</div>'}
       </div>`;
     }).join('')}

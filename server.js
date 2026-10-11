@@ -1,3 +1,4 @@
+process.env.TZ = process.env.TIMEZONE || 'America/New_York';
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
@@ -113,6 +114,7 @@ require('./routes/people')(app, ctx);
 require('./routes/petitions')(app, ctx);
 require('./routes/licences')(app, ctx);
 require('./routes/service')(app, ctx);
+require('./routes/honours')(app, ctx);
 require('./routes/verify')(app, ctx);
 require('./routes/archive')(app, ctx);
 require('./routes/town')(app, ctx);

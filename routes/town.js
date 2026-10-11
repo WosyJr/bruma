@@ -53,6 +53,7 @@ function herald(key, user) {
     cards: Cd.board(key),
     bones: Bn.board(key),
     cheers: T.cheersWeek(key),
+    honours: require('../lib/honours').inWeek(key),
     mayHerald: O.can(user, 'herald')
   };
 }

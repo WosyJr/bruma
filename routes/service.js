@@ -3,6 +3,7 @@ const O = require('../lib/offices');
 const U = require('../lib/users');
 const Sv = require('../lib/service');
 const Papers = require('../lib/papers');
+const H = require('../lib/honours');
 
 const esc = V.esc;
 
@@ -31,11 +32,33 @@ function entryList(rows) {
   }).join('')}</ol>`;
 }
 
+function honoursCard(r, u, csrf, self) {
+  const got = H.awardsOf(r.who);
+  const auto = H.autoFor(r.who);
+  const may = O.can(u, 'honours') && !self;
+  if (!got.length && !auto.length && !may) return '';
+  return `<section class="card" id="honours">
+    <div class="hrow"><h3 style="margin:0">Honours</h3>${H.ribbons(r.who, 'big')}</div>
+    ${got.length ? `<ul class="hlist">${got.map(a => { const t = H.type(a.honour) || { colors: ['#555', '#888', '#555'] }; return `<li><span class="rib" style="background:${H.stripes(t.colors)}"></span><div><b>${esc(a.honourName)}</b><p>${esc(a.citation)}</p><small>${esc(V.when(a.at))} · given by ${esc(a.byName)}</small></div>${may ? `<form method="post" action="/service/${esc(r.who)}/honour/${esc(a.id)}/strike" class="inline">${V.hidden(csrf)}<button class="linkish" type="submit">withdraw</button></form>` : ''}</li>`; }).join('')}</ul>` : ''}
+    ${auto.length ? `<p class="hint" style="margin:10px 0 0">${auto.map(e => esc((H.type(e.honour) || {}).name) + ': ' + esc(e.label)).join(' · ')}</p>` : ''}
+    ${!got.length && !auto.length ? '<p class="hint">No honours yet.</p>' : ''}
+    ${may ? `<details class="addwrap" style="margin-top:14px"><summary>Give an honour</summary>
+      <form method="post" action="/service/${esc(r.who)}/honour" class="stack" style="max-width:560px">${V.hidden(csrf)}
+        <label>The honour<select name="honour" required>${H.types().map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('')}</select></label>
+        <label>The citation<textarea name="citation" rows="2" maxlength="300" required placeholder="Held the north gate alone through the night of the raid."></textarea></label>
+        <button class="btn go" type="submit">Give it</button>
+      </form>
+      <p class="hint">It is written on the record of service too. <a href="/honours">The Roll of Honour</a></p>
+    </details>` : ''}
+  </section>`;
+}
+
 function recordPanels(r, person, u, csrf, self) {
   const w = r.watch;
   return `
 <div class="cols">
   <div>
+    ${honoursCard(r, u, csrf, self)}
     <section class="card">
       <h3 style="margin-top:0">The record</h3>
       ${entryList(r.entries)}
