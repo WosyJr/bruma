@@ -164,7 +164,9 @@ ${O.can(req.user, 'propstrike') ? `<section class="card">
   app.post('/property/:id/rent', checkCsrf, need('propdeed'), wrap((req, res) => {
     try {
       const r = P.recordRent(req.params.id, req.body, req.user);
-      req.session.flash = { text: V.septims(r.amount) + ' septims rendered on ' + r.propName + '.' };
+      let e = null;
+      try { e = require('../lib/dues').rentPaid(req.params.id, r.amount, r.period, req.user); } catch (_) {}
+      req.session.flash = { text: V.septims(r.amount) + ' septims rendered on ' + r.propName + (e ? ', entered in the treasury as no. ' + e.no : '') + '.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     const h = P.get(req.params.id);
     res.redirect('/property?map=' + encodeURIComponent((h && h.map) || 'county') + '&p=' + encodeURIComponent(req.params.id) + '#map');

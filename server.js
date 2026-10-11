@@ -124,6 +124,12 @@ require('./routes/inn')(app, ctx);
 require('./routes/admin')(app, ctx);
 require('./routes/discord')(app, ctx);
 require('./lib/announce').install();
+{
+  const Du = require('./lib/dues');
+  const reckon = () => { try { if (Du.due()) Du.reckon(); } catch (e) { console.error('reckoning', e.message); } };
+  setTimeout(reckon, 10000).unref();
+  setInterval(reckon, 15 * 60 * 1000).unref();
+}
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
