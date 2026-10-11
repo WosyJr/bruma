@@ -55,25 +55,34 @@ function honoursCard(r, u, csrf, self) {
 
 function recordPanels(r, person, u, csrf, self) {
   const w = r.watch;
+  const mayWrite = O.can(u, 'officers');
   return `
-<div class="cols">
+<div class="tiles" style="margin-top:22px">
+  <div class="stat"><div class="k">In service</div><div class="v">${r.days}</div><div class="n">days</div></div>
+  <div class="stat"><div class="k">Hours on the watch</div><div class="v">${w.hours}</div><div class="n">${w.shifts} ${w.shifts === 1 ? 'shift' : 'shifts'}</div></div>
+  <div class="stat"><div class="k">Commendations</div><div class="v">${r.commendations}</div><div class="n">upon the record</div></div>
+  <div class="stat"><div class="k">Marks against</div><div class="v">${r.marks}</div><div class="n">upon the record</div></div>
+</div>
+<div class="cols" style="margin-top:22px">
   <div>
     ${honoursCard(r, u, csrf, self)}
     <section class="card">
       <h3 style="margin-top:0">The record</h3>
       ${entryList(r.entries)}
     </section>
+    ${mayWrite ? `<section class="card">
+      <h3 style="margin-top:0">Write upon the record</h3>
+      <form method="post" action="/service/${esc(r.who)}" class="svcform">${V.hidden(csrf)}
+        <div class="grid two">
+          <label>What kind of entry<select name="kind">${Sv.KINDS.filter(k => k.id !== 'sworn' && k.id !== 'raised' && k.id !== 'moved')
+            .map(k => `<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select></label>
+        </div>
+        <label>What is written<textarea name="text" rows="3" maxlength="2000" placeholder="Held the north gate alone through the night of the raid."></textarea></label>
+        <div class="btnrow"><button class="btn" type="submit">Enter it</button><span class="hint">Entries are not rubbed out. If one is wrong, write a correction after it.</span></div>
+      </form>
+    </section>` : ''}
   </div>
   <aside>
-    <section class="card tight">
-      <div class="tiles">
-        <div class="stat"><div class="k">In service</div><div class="v">${r.days}</div><div class="n">days</div></div>
-        <div class="stat"><div class="k">Hours on the watch</div><div class="v">${w.hours}</div><div class="n">${w.shifts} ${w.shifts === 1 ? 'shift' : 'shifts'}</div></div>
-        <div class="stat"><div class="k">Commendations</div><div class="v">${r.commendations}</div><div class="n">upon the record</div></div>
-        <div class="stat"><div class="k">Marks against</div><div class="v">${r.marks}</div><div class="n">upon the record</div></div>
-      </div>
-    </section>
-
     <section class="card">
       <h3 style="margin-top:0">At a glance</h3>
       <div class="rows tight">
@@ -85,27 +94,12 @@ function recordPanels(r, person, u, csrf, self) {
         ${w.onNow ? '<div class="row"><div class="main">Now</div><div class="side"><span class="tag in">On the watch</span></div></div>' : ''}
         <div class="row"><div class="main">Standing</div><div class="side">${r.active ? '<span class="tag in">In service</span>' : '<span class="tag out">Stood down</span>'}</div></div>
       </div>
-    </section>
-
-    <section class="card tight">
-      <div class="btnrow" style="flex-direction:column;align-items:stretch">
+      <div class="btnrow" style="flex-direction:column;align-items:stretch;margin-top:16px">
         <a class="btn" href="/service/${esc(r.who)}/certificate" target="_blank" rel="noopener">The certificate of service ↗</a>
-        ${O.can(u, 'officers') ? `<a class="btn ghost" href="/service">The whole roll</a>` : ''}
+        ${mayWrite ? `<a class="btn ghost" href="/service">The whole roll</a>` : ''}
+        ${O.can(u, 'honours') ? `<a class="btn ghost" href="/honours">The Roll of Honour</a>` : ''}
       </div>
     </section>
-
-    ${O.can(u, 'officers') ? `<section class="card">
-      <h3 style="margin-top:0">Write upon the record</h3>
-      <form method="post" action="/service/${esc(r.who)}">${V.hidden(csrf)}
-        <label for="kind">What kind of entry</label>
-        <select id="kind" name="kind">${Sv.KINDS.filter(k => k.id !== 'sworn' && k.id !== 'raised' && k.id !== 'moved')
-          .map(k => `<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select>
-        <label for="text">What is written</label>
-        <textarea id="text" name="text" rows="3" maxlength="2000" placeholder="Held the north gate alone through the night of the raid."></textarea>
-        <div class="btnrow"><button class="btn" type="submit">Enter it</button></div>
-      </form>
-      <p class="hint">Entries are not rubbed out. If one is wrong, write a correction after it.</p>
-    </section>` : ''}
   </aside>
 </div>`;
 }

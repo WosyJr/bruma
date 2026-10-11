@@ -248,3 +248,5 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
     res.redirect('/herald' + (key === T.weekKey() ? '' : '?week=' + key));
   });
 };
+
+module.exports.heraldData = herald;

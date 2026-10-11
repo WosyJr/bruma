@@ -39,6 +39,7 @@ app.use((req, res, next) => {
   req.user = req.session.username ? U.sessionUser(req.session.username) : null;
   if (req.session.username && !req.user) req.session.username = null;
   if (req.user) require('./lib/town').touch(req.user);
+  require('./lib/discord').seen(req);
 
   res.page = (opts, status) => {
     const flash = req.session.flash;
@@ -119,6 +120,8 @@ require('./routes/verify')(app, ctx);
 require('./routes/archive')(app, ctx);
 require('./routes/town')(app, ctx);
 require('./routes/admin')(app, ctx);
+require('./routes/discord')(app, ctx);
+require('./lib/announce').install();
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 

@@ -33,20 +33,53 @@ module.exports = function (app, { checkCsrf, wrap, need }) {
 <section class="hgrid">${H.roll().map(r => honourCard(r.type, r.holders, may, req.session.csrf)).join('')}</section>
 <section class="card"><h3 style="margin-top:0">Earned by standing</h3><p class="hint">These two the County gives on its own, from the rolls and the watch.</p></section>
 <section class="hgrid">${auto.map(r => honourCard(r.type, r.holders, false, req.session.csrf)).join('')}</section>
-${may ? `<section class="card">
+${may ? `<div class="grid two" style="margin-top:22px;align-items:start">
+<section class="card">
+  <h3 style="margin-top:0">Give an honour</h3>
+  <form method="post" action="/honours/give" class="stack">${V.hidden(req.session.csrf)}
+    <label>To whom<select name="who" required><option value="">Choose an officer</option>${people.filter(p => p.username !== req.user.username).map(p => `<option value="${esc(p.username)}">${esc(p.name)} · ${esc(p.officeName || '')}</option>`).join('')}</select></label>
+    <label>The honour<select name="honour" required data-hpick>${H.types().map(t => `<option value="${esc(t.id)}" data-colors="${esc(t.colors.join(','))}">${esc(t.name)}</option>`).join('')}</select></label>
+    <div class="hribline"><span class="rib big" data-hprev></span><span class="hint" data-hnote></span></div>
+    <label>The citation<textarea name="citation" rows="2" maxlength="300" required placeholder="Held the north gate alone through the night of the raid."></textarea></label>
+    <button class="btn go" type="submit">Give it</button>
+  </form>
+</section>
+<section class="card">
   <h3 style="margin-top:0">Add an honour to the roll</h3>
-  <form method="post" action="/honours/type" class="stack" style="max-width:620px">${V.hidden(req.session.csrf)}
-    <label>Its name<input name="name" maxlength="60" required placeholder="e.g. The Bear of Bruma"></label>
-    <label>What it is given for<input name="note" maxlength="200"></label>
-    <div class="hcolors">${['c1', 'c2', 'c3'].map((c, i) => `<label>${['Edges', 'Centre', 'Edges again (or leave)'][i]}<select name="${c}" data-ribpick>${i === 2 ? '<option value="">Same as the edges</option>' : ''}${PALETTE.map((p, k) => `<option value="${p}"${(i === 0 && k === 7) || (i === 1 && k === 4) ? ' selected' : ''} style="background:${p}">${p}</option>`).join('')}</select></label>`).join('')}
+  <form method="post" action="/honours/type" class="stack">${V.hidden(req.session.csrf)}
+    <label>Its name<select name="pick" data-pick>${H.reserve().map(r => `<option value="${esc(r.name)}" data-colors="${esc(r.colors.join(','))}" data-note="${esc(r.note)}">${esc(r.name)}</option>`).join('')}<option value="">Something else…</option></select></label>
+    <label data-own hidden>Call it<input name="name" maxlength="60" placeholder="e.g. The Grey Fox"></label>
+    <label>What it is given for<input name="note" maxlength="200" data-note></label>
+    <div class="hcolors">${['c1', 'c2', 'c3'].map((c, i) => `<label>${['Edges', 'Centre', 'Edges again (or leave)'][i]}<select name="${c}" data-ribpick>${i === 2 ? '<option value="">Same as the edges</option>' : ''}${PALETTE.map(p => `<option value="${p}" style="background:${p}">${p}</option>`).join('')}</select></label>`).join('')}
       <span class="rib big" data-ribprev></span></div>
     <button class="btn go" type="submit">Add it to the roll</button>
   </form>
-  <p class="hint">Honours are given from each officer’s Record of Service.</p>
 </section>
-<script>(function(){var s=document.querySelectorAll('[data-ribpick]'),p=document.querySelector('[data-ribprev]');function d(){var c=[].map.call(s,function(x){return x.value}).filter(Boolean);if(c.length===2)c.push(c[0]);var n=c.length;p.style.background='linear-gradient(90deg,'+c.map(function(x,i){return x+' '+(i/n*100)+'% '+((i+1)/n*100)+'%'}).join(',')+')';}[].forEach.call(s,function(x){x.addEventListener('change',d)});d();})();</script>` : ''}`;
+</div>
+<script>(function(){
+var pick=document.querySelector('[data-pick]'),own=document.querySelector('[data-own]'),note=document.querySelector('input[data-note]'),s=document.querySelectorAll('[data-ribpick]'),p=document.querySelector('[data-ribprev]');
+function grad(c){var n=c.length;return 'linear-gradient(90deg,'+c.map(function(x,i){return x+' '+(i/n*100)+'% '+((i+1)/n*100)+'%'}).join(',')+')';}
+function draw(){var c=[].map.call(s,function(x){return x.value}).filter(Boolean);if(c.length===2)c.push(c[0]);p.style.background=grad(c);}
+function set(cols){[].forEach.call(s,function(x,i){var v=cols[i]||'';if(i===2&&cols.length>=3&&cols[2]===cols[0])v=cols[2];x.value=[].some.call(x.options,function(o){return o.value===v})?v:x.options[0].value;});draw();}
+function fromPick(){var o=pick.options[pick.selectedIndex];var custom=!o.value;own.hidden=!custom;own.querySelector('input').required=custom;if(!custom){set(o.getAttribute('data-colors').split(','));note.value=o.getAttribute('data-note')||'';}}
+pick.addEventListener('change',fromPick);[].forEach.call(s,function(x){x.addEventListener('change',draw)});fromPick();
+var hp=document.querySelector('[data-hpick]'),hv=document.querySelector('[data-hprev]'),hn=document.querySelector('[data-hnote]');var notes=${JSON.stringify(Object.fromEntries(H.types().map(t => [t.id, t.note || ''])))};
+function hdraw(){var o=hp.options[hp.selectedIndex];hv.style.background=grad(o.getAttribute('data-colors').split(','));hn.textContent=notes[o.value]||'';}
+hp.addEventListener('change',hdraw);hdraw();
+})();</script>` : ''}`;
     res.page({ title: 'The Roll of Honour', body, wide: true });
   });
+
+  app.post('/honours/give', checkCsrf, need('honours'), wrap((req, res) => {
+    const who = String((req.body || {}).who || '').toLowerCase();
+    try {
+      if (!who) throw new Error('Choose whom it is given to.');
+      if (who === req.user.username) throw new Error('No officer honours themselves.');
+      const a = H.award(who, req.body || {}, req.user);
+      req.session.flash = { text: a.name + ' is given the ' + a.honourName + '.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/honours');
+  }));
 
   app.post('/honours/type', checkCsrf, need('honours'), (req, res) => {
     try { const t = H.typeAdd(req.body || {}, req.user); req.session.flash = { text: 'The ' + t.name + ' stands on the roll.' }; }

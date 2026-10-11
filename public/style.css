@@ -1345,3 +1345,35 @@ body.tutopen{overflow:hidden}
 .facetile .ribs{margin:3px 0}
 .honour .ribs{margin:2px 0 0}
 @media (max-width:640px){.honour .ribs{justify-content:center}}
+.dcchan p{margin:8px 0}
+.dcgroup{margin-top:22px}
+.dcev{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:12px 0;border-top:1px solid var(--edge)}
+.dcev:first-of-type{border-top:0}
+.dcev label.check{margin:0}
+.dcev .hint{grid-column:1/-1;margin:0}
+.dcprev{grid-column:1/-1;margin-top:6px}
+.dcprev summary{cursor:pointer;color:var(--link);font-size:14px}
+.dcprev .btn{margin-top:8px}
+.dc-msg{display:grid;grid-template-columns:40px minmax(0,1fr);gap:14px;background:#313338;color:#DBDEE1;padding:14px 16px;border-radius:6px;margin-top:10px;font:15px/1.375 "gg sans","Noto Sans","Helvetica Neue",Helvetica,Arial,sans-serif;max-width:620px}
+.dc-ava img{width:40px;height:40px;border-radius:50%;background:#1E1F22;object-fit:cover}
+.dc-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dc-name{color:#F2F3F5;font-weight:600}
+.dc-bot{background:#5865F2;color:#fff;font-size:10px;font-weight:600;padding:1px 4px;border-radius:3px;line-height:15px}
+.dc-time{color:#949BA4;font-size:12px}
+.dc-embed{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-auto-rows:auto;gap:8px 16px;margin-top:4px;background:#2B2D31;border-left:4px solid #E09A3E;border-radius:4px;padding:8px 16px 16px 12px;max-width:520px;align-items:start}
+.dc-emain{min-width:0;display:flex;flex-direction:column;gap:8px;padding-top:8px}
+.dc-author{color:#F2F3F5;font-size:14px;font-weight:600}
+.dc-title{color:#F2F3F5;font-weight:600;font-size:16px}
+.dc-title.link{color:#00A8FC}
+.dc-desc{color:#DBDEE1;font-size:14px;white-space:normal;overflow-wrap:anywhere}
+.dc-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dc-emain .dc-foot{order:9}
+.dc-field.wide{grid-column:1/-1}
+.dc-fname{color:#F2F3F5;font-size:14px;font-weight:600}
+.dc-fval{color:#DBDEE1;font-size:14px}
+.dc-foot{color:#949BA4;font-size:12px}
+.dc-thumb{width:80px;height:80px;border-radius:4px;object-fit:cover;margin-top:8px}
+.dc-thumb.ph{display:block;background:linear-gradient(160deg,#4A3524,#21170F)}
+@media (max-width:560px){.dc-fields{grid-template-columns:1fr 1fr}.dc-msg{grid-template-columns:32px minmax(0,1fr);gap:10px;padding:12px}.dc-ava img{width:32px;height:32px}.dc-embed{grid-template-columns:1fr}}
+.hribline{display:flex;align-items:center;gap:12px;margin:-4px 0 4px}
+.svcform .grid.two{margin-bottom:0}
