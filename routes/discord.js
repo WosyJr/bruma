@@ -78,7 +78,7 @@ ${D.EVENTS.map(([group, list]) => `<section class="card dcgroup">
     <p class="hint">${esc(note)}</p>
     <div class="dcown" id="own_${id}"${own ? '' : ' hidden'}>
       ${own ? `<p class="hint" style="margin:0 0 6px"><span class="tag in">Its own channel</span> <code>${esc(own.masked)}</code>${own.info ? (own.info.bad ? ' · <span class="tag out">Not checked</span> ' + esc(own.info.bad) : ' · Discord calls it <b>' + esc(own.info.name || 'unnamed') + '</b>') : ''}</p>
-      <form method="post" action="/discord/test" class="inline" style="margin:0 0 8px">${V.hidden(csrf)}<input type="hidden" name="channel" value="own:${id}"><button class="btn ghost small" type="submit">Send a test message</button></form>` : ''}
+      <div class="btnrow" style="margin:0 0 8px"><button class="btn ghost small" type="submit" form="dcform" formaction="/discord/test" name="channel" value="own:${id}">Send a test message</button></div>` : ''}
       <input type="url" name="own_${id}" form="dcform" placeholder="${own ? 'Paste a new address to change it' : 'https://discord.com/api/webhooks/…'}" autocomplete="off">
       <div class="btnrow" style="margin-top:8px"><button class="btn go small" type="submit" form="dcform">Save the address</button>${own ? `<label class="check" style="margin:0"><input type="checkbox" name="dropown_${id}" value="1" form="dcform"> Forget it and use a channel above</label>` : ''}</div>
       <p class="hint">A webhook for this kind of post alone. Only it goes there.</p>
