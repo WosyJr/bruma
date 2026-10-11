@@ -34,7 +34,7 @@ function preview(p) {
           <div class="dc-foot">${esc(e.footer.text)} • Today at ${esc(time)}</div>
         </div>
         ${e.thumbnail ? `<img class="dc-thumb" src="${esc(e.thumbnail.url)}" alt="">` : (/faces\//.test(JSON.stringify(e)) ? '<span class="dc-thumb ph"></span>' : '')}
-        ${e.image ? `<img class="dc-banner" src="${esc(e.image.url.replace(/^https?:\/\/[^/]+/, ''))}" alt="">` : ''}
+        ${e.image ? `<img class="dc-banner" src="${esc(e.image.url.replace(/^attachment:\/\//, '/discord/').replace(/^https?:\/\/[^/]+/, ''))}" alt="">` : ''}
       </div>
     </div>
   </div>`;
@@ -49,7 +49,7 @@ module.exports = function (app, { checkCsrf, need }) {
     const chan = x => `<div class="card tight dcchan">
       <div class="dchead"><input name="name_${esc(x.id)}" form="dcform" value="${esc(x.name)}" maxlength="40" aria-label="Channel name" class="dcname">${x.url ? '<span class="tag in">Connected</span>' + (D.looksDiscord(x.url) ? '' : ' <span class="tag gold">Not a Discord address</span>') : '<span class="tag out">Not set</span>'}</div>
       ${x.url ? `<p class="hint" style="margin:6px 0 0"><code>${esc(x.masked)}</code><br>${x.from === 'site' ? 'Set here on the site.' : 'From <code>' + esc(x.env) + '</code> in Railway.'}</p>` : `<p class="hint" style="margin:6px 0 0">Paste a webhook address below, or set <code>${esc(x.env)}</code> in Railway.</p>`}
-      ${x.info ? (x.info.bad ? `<p class="hint" style="margin:4px 0 0"><span class="tag out">Not checked</span> ${esc(x.info.bad)}</p>` : `<p class="hint" style="margin:4px 0 0">Discord calls this webhook <b>${esc(x.info.name || 'unnamed')}</b>${x.info.channel ? ' · channel <code>' + esc(x.info.channel) + '</code>' : ''}. Send a test to see which channel that is.</p>`) : ''}
+      ${x.info ? (x.info.bad ? `<p class="hint" style="margin:4px 0 0"><span class="tag out">Not checked</span> ${esc(x.info.bad)}</p>` : `<p class="hint" style="margin:4px 0 0">Discord calls this webhook <b>${esc(x.info.name || 'unnamed')}</b>${x.info.channel ? ' · channel <code>' + esc(x.info.channel) + '</code>' : ''}${x.info.sealed ? ' · wears the County seal' : ''}. Send a test to see which channel that is.</p>`) : ''}
       ${x.url ? `<form method="post" action="/discord/test" class="inline" style="margin-top:8px">${V.hidden(csrf)}<input type="hidden" name="channel" value="${esc(x.id)}"><button class="btn ghost small" type="submit">Send a test message</button></form>` : ''}
       <details class="dchook" style="margin-top:8px"><summary>${x.url ? 'Change the address' : 'Add the address'}</summary>
         <input type="url" name="hook_${esc(x.id)}" form="dcform" placeholder="https://discord.com/api/webhooks/…" autocomplete="off" style="margin-top:6px">
@@ -66,6 +66,7 @@ module.exports = function (app, { checkCsrf, need }) {
 </section>
 <div class="grid three" style="margin-top:22px">${st.slots.filter((x, i) => x.url || i < 2 || st.slots.slice(0, i).every(y => y.url)).map(chan).join('')}</div>
 <p class="hint" style="margin:10px 0 0">Each card is one Discord channel. Give it the name you use for it, paste its webhook address, press Save, then send a test to be sure it lands where you think. Up to eight channels; the next empty card appears when the last is filled.</p>
+${st.failed ? `<section class="card tight" style="margin-top:22px;border-color:#B8392E"><p style="margin:0"><span class="tag out">${st.failed} ${st.failed === 1 ? 'post' : 'posts'} did not go out</span> Discord’s reason is under <a href="#lately">Lately sent</a>. The usual causes: a webhook that was deleted in Discord, or a channel the webhook no longer has.</p></section>` : ''}
 <section class="card tight" style="margin-top:22px">
   <p style="margin:0">${st.base ? `Posts link back to <code>${esc(st.base)}</code> and carry the County’s banners.` : 'The site has not learned its own address yet. It learns it from the first visit, or set <code>SITE_URL</code> in Railway. Until then posts carry no links, banners or portraits.'}</p>
 </section>
@@ -77,7 +78,7 @@ ${D.EVENTS.map(([group, list]) => `<section class="card dcgroup">
     <select name="ch_${id}" aria-label="Channel" class="dcsel${own || st.slots.find(x => x.id === cur && x.url) ? '' : ' off'}" data-own-toggle="own_${id}">${st.slots.filter(x => x.url || x.id === cur).map(x => `<option value="${esc(x.id)}"${!own && x.id === cur ? ' selected' : ''}>${esc(x.name)}${x.url ? '' : ' (not set)'}</option>`).join('')}<option value="own"${own ? ' selected' : ''}>Its own channel…</option></select>
     <p class="hint">${esc(note)}</p>
     <div class="dcown" id="own_${id}"${own ? '' : ' hidden'}>
-      ${own ? `<p class="hint" style="margin:0 0 6px"><span class="tag in">Its own channel</span> <code>${esc(own.masked)}</code>${own.info ? (own.info.bad ? ' · <span class="tag out">Not checked</span> ' + esc(own.info.bad) : ' · Discord calls it <b>' + esc(own.info.name || 'unnamed') + '</b>') : ''}</p>
+      ${own ? `<p class="hint" style="margin:0 0 6px"><span class="tag in">Its own channel</span> <code>${esc(own.masked)}</code>${own.info ? (own.info.bad ? ' · <span class="tag out">Not checked</span> ' + esc(own.info.bad) : ' · Discord calls it <b>' + esc(own.info.name || 'unnamed') + '</b>' + (own.info.sealed ? ', and wears the County seal' : '')) : ''}</p>
       <div class="btnrow" style="margin:0 0 8px"><button class="btn ghost small" type="submit" form="dcform" formaction="/discord/test" name="channel" value="own:${id}">Send a test message</button></div>` : ''}
       <input type="url" name="own_${id}" form="dcform" placeholder="${own ? 'Paste a new address to change it' : 'https://discord.com/api/webhooks/…'}" autocomplete="off">
       <div class="btnrow" style="margin-top:8px"><button class="btn go small" type="submit" form="dcform">Save the address</button>${own ? `<label class="check" style="margin:0"><input type="checkbox" name="dropown_${id}" value="1" form="dcform"> Forget it and use a channel above</label>` : ''}</div>
@@ -89,9 +90,9 @@ ${D.EVENTS.map(([group, list]) => `<section class="card dcgroup">
 </section>`).join('')}
 <div class="btnrow" style="margin-top:18px"><button class="btn go" type="submit">Save</button><span class="hint">Saves the ticks, the channels and the channel names.</span></div>
 </form>
-<section class="card" style="margin-top:22px">
+<section class="card" style="margin-top:22px" id="lately">
   <h3 style="margin-top:0">Lately sent</h3>
-  ${st.recent.length ? `<ul class="procl">${st.recent.map(r => `<li><span>${r.ok ? '<span class="tag in">Sent</span>' : '<span class="tag out">Failed</span>'} ${esc(r.title || r.event)}${r.err ? ' <span class="hint">' + esc(r.err) + '</span>' : ''}</span><span>${esc(D.slotName(r.channel || ''))} · ${esc(V.when(r.at))}</span></li>`).join('')}</ul>` : V.empty('Nothing sent since the site last started.')}
+  ${st.recent.length ? `<ul class="procl">${st.recent.map(r => `<li><span>${r.ok ? '<span class="tag in">Sent</span>' : '<span class="tag out">Failed</span>'} ${esc(r.title || r.event)}${r.err ? ' <span class="hint">' + esc(r.err) + '</span>' : ''}</span><span>${esc(D.slotName(r.channel || ''))} · ${esc(V.when(r.at))}</span></li>`).join('')}</ul>` : V.empty('Nothing has been sent yet.')}
 </section>`;
     res.page({ title: 'Announcements', body, active: 'discord', wide: true });
   });
