@@ -91,7 +91,7 @@ h3{font-family:var(--serif);font-weight:500;font-size:25px;margin:26px 0 8px;col
 .btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
 
 label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--eyebrow);margin:16px 0 5px}
-input:not([type]),input[type=text],input[type=password],input[type=number],input[type=date],select,textarea{
+input:not([type]),input[type=text],input[type=url],input[type=email],input[type=search],input[type=password],input[type=number],input[type=date],select,textarea{
   width:100%;padding:11px 13px;border:1px solid var(--edge);background:#140F0A;color:var(--ink);
   font-family:var(--sans);font-size:16px;border-radius:2px}
 input::placeholder,textarea::placeholder{color:#7A6B58}
@@ -1429,3 +1429,4 @@ body .halls.grouped{position:relative;z-index:60}.halls .grp[open]{z-index:61}
 .jump a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--edge2)}
 .jump a:hover{color:var(--bright);border-bottom-color:var(--accent)}
 html{scroll-behavior:smooth}
+.btn.hiddenbtn{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;padding:0;border:0}

@@ -53,6 +53,7 @@ module.exports = function (app, { checkCsrf, need }) {
       ${x.url ? `<form method="post" action="/discord/test" class="inline" style="margin-top:8px">${V.hidden(csrf)}<input type="hidden" name="channel" value="${esc(x.id)}"><button class="btn ghost small" type="submit">Send a test message</button></form>` : ''}
       <details class="dchook" style="margin-top:8px"><summary>${x.url ? 'Change the address' : 'Add the address'}</summary>
         <input type="url" name="hook_${esc(x.id)}" form="dcform" placeholder="https://discord.com/api/webhooks/…" autocomplete="off" style="margin-top:6px">
+        <div class="btnrow" style="margin-top:8px"><button class="btn go small" type="submit" form="dcform">Save the address</button></div>
         <p class="hint">In Discord: the channel’s settings → Integrations → Webhooks → New Webhook → Copy Webhook URL. It is kept on the site’s own disk and never shown again in full.</p>
         ${x.from === 'site' ? `<label class="check"><input type="checkbox" name="drop_${esc(x.id)}" value="1" form="dcform"> Forget this address</label>` : ''}
       </details>
@@ -68,7 +69,7 @@ module.exports = function (app, { checkCsrf, need }) {
 <section class="card tight" style="margin-top:22px">
   <p style="margin:0">${st.base ? `Posts link back to <code>${esc(st.base)}</code> and carry the County’s banners.` : 'The site has not learned its own address yet. It learns it from the first visit, or set <code>SITE_URL</code> in Railway. Until then posts carry no links, banners or portraits.'}</p>
 </section>
-<form method="post" action="/discord" id="dcform">${V.hidden(csrf)}
+<form method="post" action="/discord" id="dcform">${V.hidden(csrf)}<button class="btn hiddenbtn" type="submit" tabindex="-1" aria-hidden="true">Save</button>
 ${D.EVENTS.map(([group, list]) => `<section class="card dcgroup">
   <h3 style="margin-top:0">${esc(group)}</h3>
   ${list.map(([id, def, name, note]) => { const cur = D.channelFor(id); return `<div class="dcev">
