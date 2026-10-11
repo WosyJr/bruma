@@ -4,6 +4,7 @@
   var tut = document.getElementById('tut');
   if (tut && !tut.dataset.ready) {
     tut.dataset.ready = '1';
+    if (tut.parentNode !== document.body) document.body.appendChild(tut);
     var steps = tut.querySelectorAll('.tutstep');
     var dots = tut.querySelectorAll('.tutdots i');
     var back = tut.querySelector('[data-tutback]');
@@ -23,23 +24,14 @@
     var close = function (form) {
       tut.hidden = true;
       document.body.classList.remove('tutopen');
-      if (form && window.fetch) {
-        fetch(form.action, { method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(new FormData(form)).toString(), credentials: 'same-origin' }).catch(function () {});
-      }
-      var first = document.querySelector('#inn [data-act]:not([hidden])');
+      if (form && window.fetch) fetch(form.action, { method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(new FormData(form)).toString(), credentials: 'same-origin' }).catch(function () {});
+      var first = document.querySelector('#tbl button:not([disabled]), #tbl input:not([disabled])');
       if (first) first.focus();
     };
-    var open = function () {
-      go(0);
-      tut.hidden = false;
-      document.body.classList.add('tutopen');
-      next.focus();
-    };
+    var open = function () { go(0); tut.hidden = false; document.body.classList.add('tutopen'); next.focus(); };
     back.addEventListener('click', function () { go(at - 1); });
     next.addEventListener('click', function () { go(at + 1); });
-    tut.querySelectorAll('form').forEach(function (f) {
-      f.addEventListener('submit', function (e) { if (!window.fetch) return; e.preventDefault(); close(f); });
-    });
+    tut.querySelectorAll('form').forEach(function (f) { f.addEventListener('submit', function (e) { if (!window.fetch) return; e.preventDefault(); close(f); }); });
     tut.addEventListener('click', function (e) { if (e.target === tut) close(tut.querySelector('form.tutskip')); });
     document.addEventListener('keydown', function (e) {
       if (tut.hidden) return;
@@ -53,139 +45,174 @@
   }
 
   var inn = document.getElementById('inn');
-  if (!inn || inn.dataset.ready || !inn.querySelector('[data-act]')) return;
+  var tbl = document.getElementById('tbl');
+  if (!inn || !tbl || inn.dataset.ready) return;
   inn.dataset.ready = '1';
   var game = inn.getAttribute('data-game');
-  var q = function (s) { return inn.querySelector(s); };
-  var say = q('[data-say]');
-  var acts = Array.prototype.slice.call(inn.querySelectorAll('[data-act]'));
-  var act = function (n) { return q('[data-act="' + n + '"]'); };
   var busy = false;
-  var speak = function (text, tone) { say.textContent = text || ''; say.className = 'say' + (tone ? ' ' + tone : ''); };
-  var lock = function (on) { busy = on; acts.forEach(function (b) { b.disabled = on; }); };
 
-  var SUIT = { s: '♠', h: '♥', d: '♦', c: '♣' };
-  var NAMES = { s: 'spades', h: 'hearts', d: 'diamonds', c: 'clubs' };
-  function card(c, fresh) {
-    var el = document.createElement('span');
-    if (c === '??') { el.className = 'pcard back'; el.setAttribute('aria-label', 'A card face down'); }
-    else {
-      var r = c.slice(0, -1), su = c.slice(-1);
-      el.className = 'pcard' + (su === 'h' || su === 'd' ? ' red' : '');
-      el.setAttribute('aria-label', r + ' of ' + NAMES[su]);
-      var i = document.createElement('i'); i.appendChild(document.createTextNode(r)); i.appendChild(document.createElement('br')); i.appendChild(document.createTextNode(SUIT[su]));
-      var b = document.createElement('b'); b.textContent = SUIT[su];
-      el.appendChild(i); el.appendChild(b);
+  var ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+  var bets = {};
+  var history = [];
+  var chip = 5;
+
+  function fmt(n) { return Number(n || 0).toLocaleString('en-US'); }
+  function setPurse(n) { document.querySelectorAll('[data-purse]').forEach(function (el) { el.textContent = fmt(n); }); }
+  function say(text, tone) { var s = tbl.querySelector('[data-say]'); if (!s) return; s.textContent = text || ''; s.className = 'say' + (tone ? ' ' + tone : ''); }
+  function lockAll(on) { tbl.querySelectorAll('button, input, select').forEach(function (b) { if (on) { b.dataset.was = b.disabled ? '1' : ''; b.disabled = true; } else { b.disabled = b.dataset.was === '1'; } }); }
+  function focusFirst() { var b = tbl.querySelector('[data-key]:not([disabled])'); if (b) b.focus({ preventScroll: true }); }
+
+  function swap(html) {
+    var before = Array.prototype.map.call(tbl.querySelectorAll('.cards'), function (c) { return c.children.length; });
+    tbl.innerHTML = html;
+    if (!reduce) {
+      tbl.querySelectorAll('.cards').forEach(function (c, i) {
+        var had = before[i] || 0;
+        Array.prototype.forEach.call(c.children, function (el, k) { if (k >= had && !el.classList.contains('ghost')) el.classList.add('dealt'); });
+      });
     }
-    if (fresh && !reduce) el.classList.add('dealt');
-    return el;
+    wire();
   }
-  function paintHand(who, cards) {
-    var box = q('[data-cards="' + who + '"]');
-    var had = Array.prototype.map.call(box.children, function (c) { return c.getAttribute('aria-label') || ''; });
-    box.innerHTML = '';
-    (cards.length ? cards : ['', '']).forEach(function (c, i) {
-      if (!c) { var g = document.createElement('span'); g.className = 'pcard ghost'; box.appendChild(g); return; }
-      var el = card(c, false);
-      if (!reduce && had[i] !== el.getAttribute('aria-label')) el.classList.add('dealt');
-      box.appendChild(el);
+
+  function shake() {
+    var d = tbl.querySelector('[data-dice]');
+    if (!d || reduce) return;
+    d.classList.remove('rolling');
+    void d.offsetWidth;
+    d.classList.add('rolling');
+  }
+
+  function paintBets() {
+    var cloth = tbl.querySelector('[data-cloth]');
+    if (!cloth) return;
+    cloth.querySelectorAll('[data-place]').forEach(function (el) {
+      var k = el.getAttribute('data-place');
+      var mark = el.querySelector('.chipmark');
+      if (bets[k]) {
+        if (!mark) { mark = document.createElement('span'); mark.className = 'chipmark'; el.appendChild(mark); }
+        mark.textContent = bets[k] >= 1000 ? Math.round(bets[k] / 100) / 10 + 'k' : String(bets[k]);
+        el.classList.add('bet');
+      } else {
+        if (mark) mark.remove();
+        el.classList.remove('bet');
+      }
     });
-  }
-  function paintCards(v) {
-    paintHand('inn', v.inn);
-    paintHand('you', v.you);
-    q('[data-total="inn"]').textContent = v.started ? String(v.innTotal) : '';
-    q('[data-total="you"]').textContent = v.started ? (v.youSoft ? 'soft ' : '') + v.youTotal : '';
-    speak(v.say, v.tone);
-  }
-  function finishCards(v) {
-    paintCards(v);
-    act('hit').hidden = v.over;
-    act('stand').hidden = v.over;
-    act('deal').hidden = !v.over;
-    act('deal').textContent = 'Deal another hand';
-    var st = q('[data-streak]');
-    if (st) st.textContent = v.streak > 1 ? v.streak + ' wins in a row' : '';
-    lock(false);
-    var f = acts.filter(function (b) { return !b.hidden; })[0];
-    if (f) f.focus();
+    var total = Object.keys(bets).reduce(function (n, k) { return n + bets[k]; }, 0);
+    var t = tbl.querySelector('[data-total]');
+    if (t) t.textContent = fmt(total);
+    var h = tbl.querySelector('[data-bets]');
+    if (h) h.value = JSON.stringify(bets);
   }
 
-  var PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-  var GOAL = Number(inn.dataset.goal) || 50;
-  function die(v) {
-    var d = document.createElement('span');
-    d.className = 'die' + (v === 1 ? ' frost' : '') + (v ? '' : ' blank');
-    if (v) d.setAttribute('aria-label', String(v));
-    for (var i = 0; i < 9; i++) { var b = document.createElement('b'); if (v && PIPS[v].indexOf(i) > -1) b.className = 'on'; d.appendChild(b); }
-    return d;
-  }
-  function showDice(vals) {
-    var box = q('[data-bones]');
-    box.innerHTML = '';
-    (vals && vals.length ? vals : [0, 0, 0]).forEach(function (v) { box.appendChild(die(v)); });
-    box.classList.remove('rolling');
-    void box.offsetWidth;
-    if (!reduce) box.classList.add('rolling');
-  }
-  function score(who, n) {
-    q('[data-score="' + who + '"]').textContent = n;
-    q('[data-track="' + who + '"]').style.width = Math.min(100, Math.round(n / GOAL * 100)) + '%';
-  }
-  function seat(who) { inn.querySelectorAll('.iseat').forEach(function (el) { el.classList.toggle('turn', el.getAttribute('data-seat') === who); }); }
-  function finishBones(g) {
-    score('you', g.you); score('inn', g.inn);
-    q('[data-pot]').textContent = g.pot;
-    speak(g.say, g.tone);
-    seat(g.over ? '' : g.turn);
-    var log = q('[data-log]');
-    log.innerHTML = '';
-    (g.log.length ? g.log : ['The fire is lit. A new game.']).forEach(function (l) { var d = document.createElement('div'); d.textContent = l; log.appendChild(d); });
-    act('throw').hidden = g.over || g.turn !== 'you';
-    act('bank').hidden = g.over || !g.pot;
-    act('new').hidden = !g.over;
-    lock(false);
-    var f = acts.filter(function (b) { return !b.hidden; })[0];
-    if (f) f.focus();
+  function wire() {
+    if (game !== 'wheel') return;
+    var h = tbl.querySelector('[data-bets]');
+    try { bets = h && h.value ? JSON.parse(h.value) || {} : {}; } catch (e) { bets = {}; }
+    history = [];
+    var on = tbl.querySelector('[data-chipval].on');
+    if (on) chip = Number(on.getAttribute('data-chipval'));
+    tbl.querySelectorAll('[data-chipval]').forEach(function (c) { c.classList.toggle('on', Number(c.getAttribute('data-chipval')) === chip); c.setAttribute('aria-checked', String(Number(c.getAttribute('data-chipval')) === chip)); });
+    paintBets();
   }
 
-  function play(r) {
-    var steps = r.steps || [];
+  tbl.addEventListener('click', function (e) {
+    var c = e.target.closest('[data-chip]');
+    if (c) { var inp = tbl.querySelector('[data-stake]'); if (inp) { inp.value = c.getAttribute('data-chip'); inp.focus(); } return; }
+    if (game !== 'wheel' || busy) return;
+    var cv = e.target.closest('[data-chipval]');
+    if (cv) { chip = Number(cv.getAttribute('data-chipval')); tbl.querySelectorAll('[data-chipval]').forEach(function (x) { x.classList.toggle('on', x === cv); x.setAttribute('aria-checked', String(x === cv)); }); return; }
+    if (e.target.closest('[data-clear]')) { bets = {}; history = []; paintBets(); return; }
+    if (e.target.closest('[data-undo]')) { var last = history.pop(); if (last) { bets[last[0]] -= last[1]; if (bets[last[0]] <= 0) delete bets[last[0]]; paintBets(); } return; }
+    var place = e.target.closest('[data-cloth] [data-place]');
+    if (place) {
+      var k = place.getAttribute('data-place');
+      bets[k] = (bets[k] || 0) + chip;
+      history.push([k, chip]);
+      paintBets();
+    }
+  });
+
+  tbl.addEventListener('contextmenu', function (e) {
+    var place = e.target.closest('[data-cloth] [data-place]');
+    if (!place || game !== 'wheel') return;
+    e.preventDefault();
+    var k = place.getAttribute('data-place');
+    if (bets[k]) { delete bets[k]; history = history.filter(function (h) { return h[0] !== k; }); paintBets(); }
+  });
+
+  function spinTo(n, then) {
+    var sp = tbl.querySelector('[data-spinner]');
+    var ball = tbl.querySelector('[data-ball]');
+    if (!sp || reduce) return then();
+    var a = 360 / ORDER.length;
+    var idx = ORDER.indexOf(n);
+    var m = /rotate\((-?[\d.]+)deg\)/.exec(sp.style.transform || '');
+    var cur = m ? Number(m[1]) : 0;
+    var target = Math.floor(cur / 360) * 360 - 360 * 5 - idx * a;
+    if (ball) ball.setAttribute('hidden', '');
+    say('No more bets. The wheel turns…', '');
+    sp.style.transition = 'transform 3.4s cubic-bezier(.12,.62,.08,1)';
+    requestAnimationFrame(function () { sp.style.transform = 'rotate(' + target + 'deg)'; });
+    var fired = false;
+    var end = function () { if (fired) return; fired = true; if (ball) ball.removeAttribute('hidden'); setTimeout(then, 450); };
+    sp.addEventListener('transitionend', end, { once: true });
+    setTimeout(end, 3700);
+  }
+
+  function play(j) {
+    var frames = j.frames || [];
+    var finish = function () {
+      swap(j.html);
+      setPurse(j.purse);
+      if (j.lastout) { var lo = document.querySelector('[data-lastout]'); if (lo) lo.innerHTML = j.lastout; }
+      if (game === 'hazard') shake();
+      busy = false;
+      focusFirst();
+    };
+    if (game === 'wheel' && typeof j.spin === 'number') return spinTo(j.spin, finish);
     var i = 0;
     (function next() {
-      if (i >= steps.length) {
-        if (game === 'cards') return finishCards(r.state);
-        if (!steps.length) showDice([0, 0, 0]);
-        return finishBones(r.game);
-      }
-      var s = steps[i++];
-      if (game === 'cards') paintCards(s);
-      else {
-        seat(s.who);
-        showDice(s.dice);
-        q('[data-pot]').textContent = s.pot;
-        if (typeof s.you === 'number') score('you', s.you);
-        if (typeof s.inn === 'number') score('inn', s.inn);
-        speak(s.say, s.tone);
-      }
-      var wait = i < steps.length ? 900 : (game === 'cards' ? 650 : 0);
-      if (reduce) wait = Math.min(wait, 350);
-      setTimeout(next, wait);
+      if (i >= frames.length) return finish();
+      swap(frames[i++]);
+      if (game === 'bones') shake();
+      setTimeout(next, reduce ? 300 : 800);
     })();
   }
 
-  inn.addEventListener('submit', function (e) {
+  tbl.addEventListener('submit', function (e) {
     var form = e.target.closest('form[data-inn]');
-    if (!form || !window.fetch) return;
+    if (!form || !window.fetch || !window.URLSearchParams) return;
     e.preventDefault();
     if (busy) return;
-    lock(true);
-    fetch(form.action, { method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(new FormData(form)).toString(), credentials: 'same-origin' })
+    var sub = e.submitter;
+    var url = (sub && sub.getAttribute('formaction')) || form.getAttribute('action');
+    var fd = new FormData(form);
+    if (game === 'wheel') {
+      if (!Object.keys(bets).length) { say('Put a chip on the cloth first.', 'bad'); return; }
+      fd.set('bets', JSON.stringify(bets));
+      fd.delete('place'); fd.delete('amount');
+    }
+    busy = true;
+    lockAll(true);
+    fetch(url, { method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(fd).toString(), credentials: 'same-origin' })
       .then(function (res) { return res.json().then(function (j) { return { ok: res.ok, j: j }; }); })
       .then(function (r) {
-        if (!r.ok) { lock(false); speak(r.j.error || 'The innkeeper did not hear you.', 'bad'); return; }
+        if (!r.ok) { busy = false; lockAll(false); say(r.j.error || 'The innkeeper did not hear you.', 'bad'); return; }
         play(r.j);
       })
-      .catch(function () { lock(false); speak('The innkeeper did not hear you. Try again.', 'bad'); });
+      .catch(function () { busy = false; lockAll(false); say('The innkeeper did not hear you. Try again.', 'bad'); });
   });
+
+  document.addEventListener('keydown', function (e) {
+    if (busy || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (tut && !tut.hidden) return;
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+    var k = String(e.key || '').toLowerCase();
+    if (k.length !== 1) return;
+    var b = tbl.querySelector('[data-key="' + k + '"]:not([disabled])');
+    if (b) { e.preventDefault(); b.click(); }
+  });
+
+  wire();
 })();

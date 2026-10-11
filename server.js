@@ -120,6 +120,7 @@ require('./routes/honours')(app, ctx);
 require('./routes/verify')(app, ctx);
 require('./routes/archive')(app, ctx);
 require('./routes/town')(app, ctx);
+require('./routes/inn')(app, ctx);
 require('./routes/admin')(app, ctx);
 require('./routes/discord')(app, ctx);
 require('./lib/announce').install();

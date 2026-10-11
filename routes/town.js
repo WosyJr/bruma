@@ -5,8 +5,7 @@ const T = require('../lib/town');
 const TV = require('../lib/townviews');
 const W = require('../lib/watch');
 const Pr = require('../lib/proclaim');
-const Cd = require('../lib/cards');
-const Bn = require('../lib/bones');
+const Inn = require('../lib/inn');
 
 const tries = new Map();
 function limited(key, max, ms) {
@@ -50,8 +49,9 @@ function herald(key, user) {
     petitions, answered, reports,
     pass: (Pr.STATE_BY_ID[pass.state] || Pr.STATES[0]).name,
     face: T.faceOfDay(new Date(b - 86400000)),
-    cards: Cd.board(key),
-    bones: Bn.board(key),
+    cards: Inn.board('cards', key),
+    bones: Inn.board('bones', key),
+    inn: Inn.week(key),
     cheers: T.cheersWeek(key),
     honours: require('../lib/honours').inWeek(key),
     mayHerald: O.can(user, 'herald')
@@ -173,64 +173,6 @@ module.exports = function (app, { checkCsrf, wrap, back, need }) {
     if (!f || !fs.existsSync(f.path)) return res.status(404).end();
     res.setHeader('Cache-Control', O.can(req.user, 'town') ? 'private, no-store' : 'public, max-age=3600');
     res.type(f.type).send(fs.readFileSync(f.path));
-  });
-
-  const innWho = req => req.user ? { name: req.user.name, key: 'u:' + req.user.username, signed: true } : (req.session.innName ? { name: req.session.innName, key: 's:' + req.session.innName.toLowerCase(), signed: false } : null);
-  const innId = req => req.session.innId || (req.session.innId = require('crypto').randomBytes(12).toString('hex'));
-  const learned = (req, game) => !!(req.session.learned && req.session.learned[game]);
-  const cleanName = v => String(v ?? '').replace(/[\r\n]+/g, ' ').trim().slice(0, 40);
-
-  app.get('/inn', (req, res) => {
-    const who = innWho(req);
-    res.page({ title: 'The Jerall View Inn', body: TV.innLobby(req.user, req.session.csrf, { name: who ? who.name : '', cards: Cd.board(T.weekKey()), bones: Bn.board(T.weekKey()), I: Cd }) });
-  });
-
-  app.get('/inn/cards', (req, res) => {
-    const who = innWho(req);
-    res.page({ title: 'Twenty-one · The Jerall View Inn', wide: true, body: TV.cardsPage(req.user, req.session.csrf, { state: Cd.view(Cd.table(innId(req))), name: who ? who.name : '', board: Cd.board(T.weekKey()), I: Cd, tutorial: !learned(req, 'cards') }) });
-  });
-
-  app.get('/inn/bones', (req, res) => {
-    const who = innWho(req);
-    res.page({ title: 'Bones · The Jerall View Inn', wide: true, body: TV.bonesPage(req.user, req.session.csrf, { game: req.session.bones || Bn.fresh(), name: who ? who.name : '', board: Bn.board(T.weekKey()), I: Bn, tutorial: !learned(req, 'bones') }) });
-  });
-
-  app.post('/inn/name', checkCsrf, (req, res) => {
-    const b = req.body || {};
-    const to = ['/inn', '/inn/cards', '/inn/bones'].includes(b.to) ? b.to : '/inn';
-    if (b.website) return res.redirect(to);
-    const n = cleanName(b.name);
-    if (n.length < 2) { req.session.flash = { err: true, text: 'Give the innkeeper a name.' }; return res.redirect(to); }
-    req.session.innName = n;
-    res.redirect(to);
-  });
-
-  app.post('/inn/:game/learned', checkCsrf, (req, res) => {
-    const game = String(req.params.game);
-    if (!['cards', 'bones'].includes(game)) return res.status(404).end();
-    req.session.learned = Object.assign({}, req.session.learned, { [game]: 1 });
-    if (/json/.test(String(req.get('accept') || ''))) return res.json({ ok: true });
-    res.redirect('/inn/' + game);
-  });
-
-  app.post('/inn/:game/:what', checkCsrf, (req, res) => {
-    const json = /json/.test(String(req.get('accept') || ''));
-    const game = String(req.params.game);
-    const what = String(req.params.what);
-    const back = '/inn/' + (game === 'bones' ? 'bones' : 'cards');
-    const fail = (code, text) => json ? res.status(code).json({ error: text }) : (req.session.flash = { err: true, text }, res.redirect(back));
-    const who = innWho(req);
-    if (!who) return fail(400, 'Tell the innkeeper your name first.');
-    const moves = { cards: ['deal', 'hit', 'stand'], bones: ['throw', 'bank', 'new'] };
-    if (!moves[game] || !moves[game].includes(what)) return fail(404, 'The innkeeper does not follow.');
-    if (limited('inn|' + (req.user ? req.user.username : req.ip), 240, 60 * 1000)) return fail(429, 'Easy, traveller. Give the innkeeper a moment.');
-    try {
-      let out;
-      if (game === 'cards') out = Cd.act(innId(req), what, who);
-      else { const r = Bn.act(req.session.bones, what, who); req.session.bones = r.game; out = r; }
-      if (json) return res.json(out);
-      res.redirect(back);
-    } catch (e) { fail(400, e.message); }
   });
 
   app.get('/herald', (req, res) => {
