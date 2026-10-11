@@ -394,3 +394,12 @@ document.addEventListener('change', function (e) {
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) { set('gate:' + pick.id, 'later:' + today); close(); } });
   var rb = box.querySelector('[data-gate-read]'); if (rb) rb.focus();
 })();
+
+(function () {
+  var sels = document.querySelectorAll('[data-own-toggle]');
+  Array.prototype.forEach.call(sels, function (s) {
+    var box = document.getElementById(s.getAttribute('data-own-toggle'));
+    if (!box) return;
+    s.addEventListener('change', function () { box.hidden = s.value !== 'own'; if (s.value === 'own') { var i = box.querySelector('input[type=url]'); if (i) i.focus(); } });
+  });
+})();

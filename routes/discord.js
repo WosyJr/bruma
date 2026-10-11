@@ -72,11 +72,18 @@ module.exports = function (app, { checkCsrf, need }) {
 <form method="post" action="/discord" id="dcform">${V.hidden(csrf)}<button class="btn hiddenbtn" type="submit" tabindex="-1" aria-hidden="true">Save</button>
 ${D.EVENTS.map(([group, list]) => `<section class="card dcgroup">
   <h3 style="margin-top:0">${esc(group)}</h3>
-  ${list.map(([id, def, name, note]) => { const cur = D.channelFor(id); return `<div class="dcev">
+  ${list.map(([id, def, name, note]) => { const cur = D.channelFor(id); const own = D.ownHook(id); return `<div class="dcev">
     <label class="check"><input type="checkbox" name="on_${id}" value="1"${set.on[id] === false ? '' : ' checked'}> <b>${esc(name)}</b></label>
-    <select name="ch_${id}" aria-label="Channel" class="dcsel${st.slots.find(x => x.id === cur && x.url) ? '' : ' off'}">${st.slots.filter(x => x.url || x.id === cur).map(x => `<option value="${esc(x.id)}"${x.id === cur ? ' selected' : ''}>${esc(x.name)}${x.url ? '' : ' (not set)'}</option>`).join('')}</select>
+    <select name="ch_${id}" aria-label="Channel" class="dcsel${own || st.slots.find(x => x.id === cur && x.url) ? '' : ' off'}" data-own-toggle="own_${id}">${st.slots.filter(x => x.url || x.id === cur).map(x => `<option value="${esc(x.id)}"${!own && x.id === cur ? ' selected' : ''}>${esc(x.name)}${x.url ? '' : ' (not set)'}</option>`).join('')}<option value="own"${own ? ' selected' : ''}>Its own channel…</option></select>
     <p class="hint">${esc(note)}</p>
-    <details class="dcprev"><summary>See how it looks</summary>${preview(D.payload(id))}
+    <div class="dcown" id="own_${id}"${own ? '' : ' hidden'}>
+      ${own ? `<p class="hint" style="margin:0 0 6px"><span class="tag in">Its own channel</span> <code>${esc(own.masked)}</code>${own.info ? (own.info.bad ? ' · <span class="tag out">Not checked</span> ' + esc(own.info.bad) : ' · Discord calls it <b>' + esc(own.info.name || 'unnamed') + '</b>') : ''}</p>
+      <form method="post" action="/discord/test" class="inline" style="margin:0 0 8px">${V.hidden(csrf)}<input type="hidden" name="channel" value="own:${id}"><button class="btn ghost small" type="submit">Send a test message</button></form>` : ''}
+      <input type="url" name="own_${id}" form="dcform" placeholder="${own ? 'Paste a new address to change it' : 'https://discord.com/api/webhooks/…'}" autocomplete="off">
+      <div class="btnrow" style="margin-top:8px"><button class="btn go small" type="submit" form="dcform">Save the address</button>${own ? `<label class="check" style="margin:0"><input type="checkbox" name="dropown_${id}" value="1" form="dcform"> Forget it and use a channel above</label>` : ''}</div>
+      <p class="hint">A webhook for this kind of post alone. Only it goes there.</p>
+    </div>
+    <details class="dcprev"><summary>See how it looks</summary>${id === 'herald' ? preview(D.payload(id)).replace(/<img class="dc-banner" src="[^"]*"/, '<img class="dc-banner" src="/herald.png"') + '<p class="hint">The Herald goes out as a picture of the whole paper, drawn fresh each Sundas. <a href="/herald.png">See this week’s</a>.</p>' : preview(D.payload(id))}
       <button class="btn ghost small" type="submit" formaction="/discord/sample/${id}">Post this sample to its channel</button></details>
   </div>`; }).join('')}
 </section>`).join('')}
@@ -99,6 +106,16 @@ ${D.EVENTS.map(([group, list]) => `<section class="card dcgroup">
     D.SLOTS.forEach(x => { if (b['name_' + x[0]] !== undefined) names[x[0]] = b['name_' + x[0]]; });
     D.setChannels(chans, names);
     const bad = [], learned = [];
+    for (const e of D.EVENT_LIST) {
+      const id = e.id;
+      if (b['dropown_' + id] === '1') { D.setOwn(id, ''); continue; }
+      const u = String(b['own_' + id] || '').trim();
+      if (!u) continue;
+      if (!D.looksDiscord(u)) { bad.push(e.name.replace(/,.*$/, '')); continue; }
+      D.setOwn(id, u);
+      const info = await D.learnHook('own:' + id);
+      if (info && !info.bad) learned.push(e.name.replace(/,.*$/, '') + (info.name ? ' (Discord calls it ' + info.name + ')' : ''));
+    }
     for (const x of D.SLOTS) {
       const id = x[0];
       if (b['drop_' + id] === '1') { D.setHook(id, ''); continue; }
@@ -115,6 +132,15 @@ ${D.EVENTS.map(([group, list]) => `<section class="card dcgroup">
     res.redirect('/discord');
   });
 
+  app.get('/herald.png', (req, res) => {
+    const T = require('../lib/town');
+    const wk = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.week || '')) ? String(req.query.week) : T.weekKey();
+    let png = null;
+    try { const h = require('./town').heraldData(wk, req.user); png = require('../lib/heraldimage').render(h, { dateline: V.inworld(wk + 'T12:00:00') }); } catch (e) { png = null; }
+    if (!png) return res.status(503).type('text').send('The press is cold: the picture could not be drawn on this server.');
+    res.set('Cache-Control', 'private, max-age=300').type('png').send(png);
+  });
+
   app.post('/discord/test', checkCsrf, need('discord'), (req, res) => {
     try { D.testSend(String((req.body || {}).channel || 'public')); req.session.flash = { text: 'Sent. Look in the channel.' }; }
     catch (e) { req.session.flash = { err: true, text: e.message }; }
@@ -125,8 +151,10 @@ ${D.EVENTS.map(([group, list]) => `<section class="card dcgroup">
     const id = String(req.params.id);
     const ev = D.EVENT_BY_ID[id];
     if (!ev) return res.redirect('/discord');
-    const ok = D.send(id, null, { force: true });
-    req.session.flash = ok ? { text: 'The sample is on its way to ' + D.slotName(D.channelFor(id)) + '.' } : { err: true, text: 'No webhook is set for ' + D.slotName(D.channelFor(id)) + '.' };
+    let data = null;
+    if (id === 'herald') { try { data = D.heraldPost(require('../lib/town').weekKey()); } catch (e) { data = null; } }
+    const ok = D.send(id, data, { force: true });
+    req.session.flash = ok ? { text: (id === 'herald' ? 'This week’s Herald' : 'The sample') + ' is on its way to ' + D.targetName(id) + '.' } : { err: true, text: 'No webhook is set for ' + D.targetName(id) + '.' };
     res.redirect('/discord');
   });
 };

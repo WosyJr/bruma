@@ -1430,3 +1430,4 @@ body .halls.grouped{position:relative;z-index:60}.halls .grp[open]{z-index:61}
 .jump a:hover{color:var(--bright);border-bottom-color:var(--accent)}
 html{scroll-behavior:smooth}
 .btn.hiddenbtn{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;padding:0;border:0}
+.dcown{margin:8px 0 4px;padding:10px 12px;border:1px dashed var(--edge2);border-radius:4px}
