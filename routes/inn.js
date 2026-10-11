@@ -17,7 +17,9 @@ module.exports = function (app, { checkCsrf, need }) {
   const wantsJson = req => /json/.test(String(req.get('accept') || ''));
   const base = req => {
     if (req.session.bones) req.session.bones = null;
-    return { user: req.user, csrf: req.session.csrf, patron: I.current(req), house: I.house(), outcomes: I.outcomes() };
+    const patron = I.current(req);
+    const seatedP = I.seated(patron);
+    return { user: req.user, csrf: req.session.csrf, patron, house: I.house(), outcomes: I.outcomes(), requests: seatedP ? I.openRequests(patron.id) : [], net: seatedP ? (I.nets()[patron.id] || 0) : 0 };
   };
   const learned = (req, game) => !!(req.session.learned && req.session.learned[game]);
 
@@ -37,22 +39,38 @@ module.exports = function (app, { checkCsrf, need }) {
     if (b.website) return res.redirect('/inn');
     if (limited('innask|' + (req.user ? req.user.username : req.ip), 5, 60 * 60 * 1000)) { req.session.flash = { err: true, text: 'The innkeeper has heard enough names from you for now. Try again later.' }; return res.redirect('/inn'); }
     try {
-      const p = I.ask(b, req.user);
-      if (!req.user) req.session.innPatron = p.id;
-      req.session.flash = { text: 'Your name is in ' + I.KEEPER + '’s book. A keeper of the inn will seat you.' };
+      if (!req.user && !req.session.innToken) req.session.innToken = I.newToken();
+      const p = I.ask(b, req.user, req.session.innToken);
+      req.session.flash = { text: p.returning ? 'The innkeeper knows the name. Once a keeper confirms it is you, your purse is waiting.' : 'Your name is in ' + I.KEEPER + '’s book. A keeper of the inn will let you in.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/inn');
   });
 
-  app.post('/inn/signin', checkCsrf, (req, res) => {
-    const b = req.body || {};
-    if (limited('innsign|' + req.ip, 10, 10 * 60 * 1000)) { req.session.flash = { err: true, text: 'Too many tries. Wait a few minutes and try again.' }; return res.redirect('/inn'); }
-    try { const p = I.signIn(b.name, b.pass); req.session.innPatron = p.id; }
-    catch (e) { req.session.flash = { err: true, text: e.message }; }
-    res.redirect('/inn');
-  });
+  const mine = (req, res, fn) => {
+    const p = I.current(req);
+    if (!I.seated(p)) { req.session.flash = { err: true, text: 'Ask for a seat at the door first.' }; return res.redirect('/inn'); }
+    try { fn(p); } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect(String((req.body || {}).back || '') === 'me' ? '/inn/me' : '/inn#purse');
+  };
+
+  app.post('/inn/cashout', checkCsrf, (req, res) => mine(req, res, p => {
+    const r = I.cashOut(p.id, (req.body || {}).amount);
+    req.session.flash = { text: I.septims(r.amount) + ' is set aside. The innkeeper will pay you in game.' };
+  }));
+
+  app.post('/inn/more', checkCsrf, (req, res) => mine(req, res, p => {
+    if (limited('innmore|' + p.id, 6, 60 * 60 * 1000)) throw new Error('You have asked a lot this hour. Wait for the innkeeper.');
+    I.askMore(p.id, (req.body || {}).amount, (req.body || {}).note);
+    req.session.flash = { text: 'The innkeeper knows you want more coin. Hand it over in game and your purse is filled.' };
+  }));
+
+  app.post('/inn/request/:id/withdraw', checkCsrf, (req, res) => mine(req, res, p => {
+    I.settle(req.params.id, 'withdraw', { username: '', name: p.name }, undefined, p.id);
+    req.session.flash = { text: 'Called off.' };
+  }));
 
   app.post('/inn/leave', checkCsrf, (req, res) => {
+    req.session.innToken = null;
     req.session.innPatron = null;
     req.session.innBet = null;
     req.session.flash = { text: 'You leave the warmth of the inn. Your purse stays in Brannoc’s book.' };
@@ -61,7 +79,7 @@ module.exports = function (app, { checkCsrf, need }) {
 
   app.get('/inn/me', (req, res) => {
     const d = base(req);
-    if (!d.patron) return res.redirect('/inn');
+    if (!I.seated(d.patron)) return res.redirect('/inn');
     d.record = I.record(d.patron.id);
     res.page({ title: 'My purse · The Jerall View Inn', body: IV.mePage(d) });
   });
@@ -76,6 +94,24 @@ module.exports = function (app, { checkCsrf, need }) {
     res.redirect('/inn/ledger');
   });
 
+  app.post('/inn/ledger/request/:id/:what', checkCsrf, need('inn'), (req, res) => {
+    const what = String(req.params.what);
+    try {
+      const r = I.settle(req.params.id, what, req.user, (req.body || {}).amount);
+      req.session.flash = { text: { paid: r.name + '’s cash-out of ' + I.septims(r.amount) + ' is marked paid.', returned: r.name + '’s ' + I.septims(r.amount) + ' is back in their purse.', added: I.septims(r.added) + ' added to ' + r.name + '’s purse.', declined: r.name + '’s request is declined.' }[r.status] || 'Done.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/inn/ledger');
+  });
+
+  app.post('/inn/ledger/all/accept', checkCsrf, need('inn'), (req, res) => {
+    const L = I.ledger();
+    L.waiting.forEach(p => I.decide(p.id, 'accept', req.user));
+    L.returning.forEach(p => I.decide(p.id, 'device', req.user));
+    const n = L.waiting.length + L.returning.length;
+    req.session.flash = { text: n === 1 ? 'One patron let in.' : n + ' patrons let in. Fill their purses once they hand over coin.' };
+    res.redirect('/inn/ledger');
+  });
+
   app.post('/inn/ledger/:id/:what', checkCsrf, need('inn'), (req, res) => {
     const what = String(req.params.what);
     const b = req.body || {};
@@ -83,17 +119,46 @@ module.exports = function (app, { checkCsrf, need }) {
       if (what === 'purse') {
         const p = I.purse(req.params.id, String(b.kind || ''), b.amount, b.note, req.user);
         req.session.flash = { text: p.name + '’s purse now holds ' + I.septims(p.purse) + '.' };
-      } else if (['accept', 'turn', 'forget', 'resetpass'].includes(what)) {
+      } else if (['accept', 'turn', 'forget', 'device', 'nodevice'].includes(what)) {
         const r = I.decide(req.params.id, what, req.user);
         const n = r.patron.name;
-        req.session.flash = { text: { accept: n + ' is seated. Fill their purse once they hand over coin.', turn: n + ' is turned away.', forget: n + ' is forgotten. The name is free to ask again.', resetpass: 'New passphrase for ' + n + ': ' + r.pass + '. Tell them in game; it will not be shown again.' }[what] };
+        req.session.flash = { text: { accept: n + ' is let in. Fill their purse once they hand over coin.', turn: n + ' is turned away.', forget: n + ' is forgotten. The name is free to ask again.', device: n + ' can sit down from that browser now.', nodevice: 'That browser is turned away. ' + n + '’s seat and purse are untouched.' }[what] };
       } else return res.status(404).end();
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect('/inn/ledger');
   });
 
+  function liveRows() {
+    const house = I.house();
+    const nets = I.nets();
+    return I.live(15).map(p => {
+      const d = { user: null, csrf: '', patron: p, house, outcomes: {}, requests: [], net: 0 };
+      d.view = viewOf(p.lastGame, d);
+      const secs = Math.round((Date.now() - Date.parse(p.lastAt)) / 1000);
+      return { id: p.id, name: p.name, game: p.lastGame, purse: p.purse, held: p.held || 0, net: nets[p.id] || 0, html: IV.watchPart(p.lastGame, d), ago: secs < 60 ? 'Last move ' + secs + ' seconds ago' : 'Last move ' + Math.round(secs / 60) + ' minutes ago' };
+    });
+  }
+
+  app.get('/inn/ledger/live', need('inn'), (req, res) => {
+    res.page({ title: 'The tables, live', active: 'innledger', wide: true, body: IV.livePage({ rows: liveRows(), feed: I.feed(15) }) });
+  });
+
+  app.get('/inn/ledger/live.json', need('inn'), (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ tables: IV.liveTables(liveRows()), feed: IV.liveFeed(I.feed(15)) });
+  });
+
   app.get('/inn/fairness', need('inn'), (req, res) => {
-    res.page({ title: 'How the tables ran', active: 'innledger', wide: true, body: IV.fairnessPage({ week: I.week(require('../lib/town').weekKey()) }) });
+    res.page({ title: 'How the tables ran', active: 'innledger', wide: true, body: IV.fairnessPage({ csrf: req.session.csrf, week: I.week(require('../lib/town').weekKey()) }) });
+  });
+
+  app.post('/inn/ledger/reset', checkCsrf, need('inn'), (req, res) => {
+    const b = req.body || {};
+    if (String(b.confirm || '').trim().toUpperCase() !== 'RESET') { req.session.flash = { err: true, text: 'Type RESET to confirm.' }; return res.redirect('/inn/fairness'); }
+    const scope = b.scope === 'everything' ? 'everything' : 'rounds';
+    I.reset(scope, req.user);
+    req.session.flash = { text: scope === 'everything' ? 'The inn is reset. Every patron, purse and round is cleared; the old records are kept in the data folder.' : 'The rounds are reset. Patrons keep their seats and purses; the old rounds are kept in the data folder.' };
+    res.redirect(scope === 'everything' ? '/inn/ledger' : '/inn/fairness');
   });
 
   app.post('/inn/:game/learned', checkCsrf, (req, res) => {
@@ -122,7 +187,7 @@ module.exports = function (app, { checkCsrf, need }) {
     const back = '/inn/' + game;
     const fail = (code, text) => json ? res.status(code).json({ error: text }) : (req.session.flash = { err: true, text }, res.redirect(back));
     const patron = I.current(req);
-    if (!patron) return fail(403, 'Ask for a seat at the door first.');
+    if (!I.seated(patron)) return fail(403, 'Ask for a seat at the door first.');
     if (limited('inn|' + patron.id, 240, 60 * 1000)) return fail(429, 'Easy, traveller. Give the innkeeper a moment.');
     const b = Object.assign({}, req.body || {});
     if (game === 'wheel' && !b.bets && b.place) b.bets = { [String(b.place)]: b.amount };
