@@ -123,6 +123,12 @@ module.exports = function (app, { checkCsrf, need }) {
     res.redirect('/inn/ledger');
   });
 
+  app.post('/inn/ledger/keno/draw', checkCsrf, need('inn'), (req, res) => {
+    const r = I.kenoDraw(Date.now(), true);
+    req.session.flash = { text: r ? 'Draw ' + r.no + ' is made: ' + r.tickets + (r.tickets === 1 ? ' ticket' : ' tickets') + ', ' + I.septims(r.paid) + ' paid out.' : 'The lottery has started its clock.' };
+    res.redirect('/inn/ledger');
+  });
+
   app.post('/inn/ledger/:id/:what', checkCsrf, need('inn'), (req, res) => {
     const what = String(req.params.what);
     const b = req.body || {};
@@ -151,7 +157,7 @@ module.exports = function (app, { checkCsrf, need }) {
   }
 
   function liveBack() {
-    return BV.liveBack(PvP.open().map(r => PvP.tick(r.id) || r).filter(r => r.status !== 'done').map(r => ({ r, html: BV.roomPart({ me: '', canSit: false, keeperEye: true, csrf: '' }, r).replace(/<form[\s\S]*?<\/form>/g, '') })));
+    return BV.liveBack(PvP.open().map(r => PvP.tick(r.id) || r).filter(r => r.status !== 'done').map(r => ({ r, html: BV.roomPart({ me: '', canSit: false, keeperEye: true, csrf: '', house: I.house() }, r).replace(/<form[\s\S]*?<\/form>/g, '') })));
   }
 
   app.get('/inn/ledger/live', need('inn'), (req, res) => {
@@ -182,7 +188,7 @@ module.exports = function (app, { checkCsrf, need }) {
     const seatedP = I.seated(patron);
     const me = seatedP ? patron.id : '';
     const sitting = me ? PvP.liveRoomOf(me) : null;
-    return { user: req.user, csrf: req.session.csrf, patron, me, canSit: seatedP && !sitting && patron.purse >= r.stake, keeperEye: keeper(req) && !(me && sitting) };
+    return { user: req.user, csrf: req.session.csrf, house: I.house(), patron, me, canSit: seatedP && !sitting && patron.purse >= r.stake, keeperEye: keeper(req) && !(me && sitting) };
   };
   const canWatch = req => keeper(req) || I.seated(I.current(req));
   const stateOf = (req, r) => {
@@ -221,7 +227,7 @@ module.exports = function (app, { checkCsrf, need }) {
     res.json(stateOf(req, r));
   });
 
-  const ROOMACTS = ['join', 'start', 'leave', 'rebuy', 'back', 'say', 'throw', 'bank', 'bid', 'liar', 'fold', 'check', 'call', 'raise', 'allin'];
+  const ROOMACTS = ['join', 'start', 'leave', 'rebuy', 'back', 'say', 'throw', 'bank', 'bid', 'liar', 'fold', 'check', 'call', 'raise', 'allin', 'bet', 'insure', 'noinsure', 'hit', 'stand', 'double', 'split', 'surrender', 'place', 'move', 'take', 'pick'];
   app.post('/inn/room/:id/:what', checkCsrf, (req, res, next) => {
     const id = String(req.params.id);
     const what = String(req.params.what);
@@ -240,12 +246,22 @@ module.exports = function (app, { checkCsrf, need }) {
       else if (what === 'rebuy') PvP.rebuy(id, p.id);
       else if (what === 'back') PvP.back(id, p.id);
       else if (what === 'say') { if (limited('innsay|' + p.id, 20, 60 * 1000)) throw new Error('Slow down; let the others get a word in.'); PvP.say(id, p.id, b.text); }
-      else PvP.act(id, p.id, what, { q: b.q, f: b.f, to: b.to });
+      else PvP.act(id, p.id, what, { q: b.q, f: b.f, to: b.to, from: b.from, at: b.at, side: b.side, choice: b.choice, amount: b.amount });
     } catch (e) { return fail(400, e.message); }
     if (what === 'leave' && !json) return res.redirect('/inn/back');
     if (!json) return res.redirect(back);
     const r = PvP.get(id);
     res.json(r ? stateOf(req, r) : { gone: true });
+  });
+
+  app.get('/inn/keno/state.json', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const d = base(req);
+    if (!I.seated(d.patron)) return res.status(403).json({ error: 'Ask for a seat at the door first.' });
+    d.view = viewOf('keno', d);
+    const k = d.view;
+    if (String(req.query.no || '') === String(k.no) && String(req.query.last || '') === String(k.last ? k.last.no : 0)) return res.json({ same: true, nextAt: k.nextAt, now: Date.now() });
+    res.json({ no: k.no, nextAt: k.nextAt, now: Date.now(), last: k.last ? { no: k.last.no, balls: k.last.balls } : null, html: IV.part('keno', d), purse: d.patron.purse, lastout: IV.lastOut('keno', d.outcomes.keno) });
   });
 
   app.post('/inn/:game/learned', checkCsrf, (req, res) => {
@@ -302,6 +318,10 @@ module.exports = function (app, { checkCsrf, need }) {
       });
     }
     if (game === 'wheel') reply.spin = out.spin;
+    if (game === 'six') reply.slot = out.slot;
+    if (game === 'punto' && out.steps) {
+      reply.frames = out.steps.map((st, i) => IV.HV.puntoPart(d, { P: st.P, B: st.B, frame: true, say: i === 0 ? 'Two cards each.' : (st.P.length > out.steps[i - 1].P.length ? 'The Player draws a third.' : 'The Banker draws a third.') }));
+    }
     res.json(reply);
   });
 };

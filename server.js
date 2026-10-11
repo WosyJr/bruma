@@ -129,6 +129,8 @@ require('./lib/announce').install();
   const reckon = () => { try { if (Du.due()) Du.reckon(); } catch (e) { console.error('reckoning', e.message); } };
   setTimeout(reckon, 10000).unref();
   setInterval(reckon, 15 * 60 * 1000).unref();
+  const Inn = require('./lib/inn');
+  setInterval(() => { try { Inn.kenoDraw(); } catch (e) { console.error('lottery', e.message); } }, 5000).unref();
 }
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));

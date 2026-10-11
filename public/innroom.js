@@ -54,12 +54,23 @@
     else if (k === 'turn') play('tick');
     else if (k === 'join') play('door');
     else if (k === 'talk') play('click');
+    else if (k === 'mill') play('win');
+    else if (k === 'reveal') play('card');
+    else if (k === 'coin') play('chip');
   }
 
-  function animate(prevBoard) {
+  function counts() { return Array.prototype.map.call(tbl.querySelectorAll('.cards'), function (c) { return c.querySelectorAll('.pcard:not(.ghost)').length; }); }
+  function animate(prev, was) {
     if (reduce) return;
-    var board = tbl.querySelectorAll('[data-board] .pcard:not(.ghost)');
-    for (var i = prevBoard; i < board.length; i++) { board[i].classList.add('dealt'); board[i].style.animationDelay = ((i - prevBoard) * 0.12) + 's'; }
+    var n = 0;
+    tbl.querySelectorAll('.cards').forEach(function (c, i) {
+      var cards = c.querySelectorAll('.pcard:not(.ghost)');
+      for (var k = (prev[i] || 0); k < cards.length; k++) { cards[k].classList.add('dealt'); cards[k].style.animationDelay = (n * 0.1) + 's'; n++; }
+    });
+    var coin = tbl.querySelector('[data-coin]');
+    if (coin && was.coin !== null && coin.getAttribute('data-n') !== was.coin) { coin.classList.add('flipping'); play('ball'); setTimeout(function () { coin.classList.remove('flipping'); }, 1300); }
+    var rv = tbl.querySelector('[data-reveal]');
+    if (rv && rv.getAttribute('data-reveal') !== was.reveal) rv.classList.add('show');
     var dice = tbl.querySelector('[data-dice]');
     if (dice && room.getAttribute('data-roll') === '1') { dice.classList.add('rolling'); setTimeout(function () { dice.classList.remove('rolling'); }, 600); }
   }
@@ -76,7 +87,9 @@
     if (typing && j.html && turnKeyOf(j.html) === before) { pending = j; return; }
     pending = null;
     var vals = keepVals();
-    var prevBoard = tbl.querySelectorAll('[data-board] .pcard:not(.ghost)').length;
+    var prevBoard = counts();
+    var cEl = tbl.querySelector('[data-coin]'), rEl = tbl.querySelector('[data-reveal]');
+    var was = { coin: cEl ? cEl.getAttribute('data-n') : null, reveal: rEl ? rEl.getAttribute('data-reveal') : null };
     room.setAttribute('data-roll', j.ev && j.ev.n > evn && j.ev.kind === 'dice' ? '1' : '0');
     v = j.v;
     me = j.me;
@@ -86,7 +99,7 @@
     if (log && j.log !== undefined) log.innerHTML = j.log;
     setPurse(j.purse);
     sound(j.ev, j);
-    animate(prevBoard);
+    animate(prevBoard, was);
     wire();
     countdown();
   }
@@ -109,12 +122,13 @@
     play('lose');
   }
 
-  function send(form, action) {
+  function send(form, action, sub) {
     if (sending) return;
     sending = true;
     var fd = new FormData(form);
     var body = new URLSearchParams();
     fd.forEach(function (val, key) { body.append(key, val); });
+    if (sub && sub.name) body.append(sub.name, sub.value);
     form.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
     play('click');
     fetch(action, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
@@ -139,9 +153,10 @@
         e.preventDefault();
         var sub = e.submitter;
         var action = sub && sub.getAttribute('formaction') ? sub.getAttribute('formaction') : f.getAttribute('action');
-        send(f, action);
+        send(f, action, sub);
       });
     });
+    morrisWire();
     var num = tbl.querySelector('[data-raise]'), sl = tbl.querySelector('[data-raiseslide]');
     if (num && sl) {
       sl.addEventListener('input', function () { num.value = sl.value; });
@@ -150,6 +165,45 @@
     }
     tbl.querySelectorAll('.facepick input').forEach(function (r) { r.addEventListener('change', function () { play('tick'); }); });
   }
+
+  var msel = -1;
+  function morrisWire() {
+    var w = tbl.querySelector('[data-morris]');
+    if (!w || w.getAttribute('data-turn') !== '1') return;
+    var me = Number(w.getAttribute('data-me')), ph = w.getAttribute('data-phase'), take = w.getAttribute('data-take') === '1';
+    var board = w.getAttribute('data-board').split(',').map(Number);
+    var adj = []; try { adj = JSON.parse(w.getAttribute('data-adj')); } catch (e) {}
+    var form = tbl.querySelector('form.mform');
+    if (!form) return;
+    var go = function (fields) {
+      ['from', 'to', 'at'].forEach(function (k) { var el = form.querySelector('[data-m' + k + ']'); if (el) el.value = fields[k] === undefined ? '' : fields[k]; });
+      send(form, form.getAttribute('action'));
+    };
+    var paint = function () {
+      w.querySelectorAll('[data-pt]').forEach(function (g) {
+        var i = Number(g.getAttribute('data-pt'));
+        var pc = g.querySelector('.mp'), dot = g.querySelector('.mpt');
+        if (pc) pc.classList.toggle('sel', i === msel);
+        if (dot) { var ok = msel >= 0 && board[i] === -1 && (ph === 'fly' || (adj[msel] || []).indexOf(i) >= 0); dot.classList.toggle('tgt', ok); dot.setAttribute('r', ok ? 7 : 4); }
+      });
+    };
+    var pick = function (i) {
+      if (take) { if (board[i] === 1 - me) { play('lose'); go({ at: i }); } return; }
+      if (ph === 'place') { if (board[i] === -1) { play('chip'); go({ to: i }); } return; }
+      if (board[i] === me) { msel = msel === i ? -1 : i; play('tick'); paint(); return; }
+      if (msel >= 0 && board[i] === -1 && (ph === 'fly' || (adj[msel] || []).indexOf(i) >= 0)) { var f = msel; msel = -1; play('chip'); go({ from: f, to: i }); }
+    };
+    w.querySelectorAll('[data-pt]').forEach(function (g) {
+      g.addEventListener('click', function () { pick(Number(g.getAttribute('data-pt'))); });
+      g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(Number(g.getAttribute('data-pt'))); } });
+    });
+    paint();
+  }
+
+  tbl.addEventListener('click', function (e) {
+    var c = e.target.closest('[data-chip]');
+    if (c) { var inp = tbl.querySelector('[data-stake]'); if (inp) { inp.value = c.getAttribute('data-chip'); play('chip'); } }
+  });
 
   function countdown() {
     var t = tbl.querySelector('.pvtimer');

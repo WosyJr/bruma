@@ -121,6 +121,7 @@
   inn.dataset.ready = '1';
   var game = inn.getAttribute('data-game');
   var busy = false;
+  var CLOTH = ['wheel', 'cage', 'six', 'punto'].indexOf(game) >= 0;
 
   var ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
   var bets = {};
@@ -215,7 +216,8 @@
   }
 
   function wire() {
-    if (game !== 'wheel') return;
+    if (game === 'keno') kenoWire();
+    if (!CLOTH) return;
     var h = tbl.querySelector('[data-bets]');
     try { bets = h && h.value ? JSON.parse(h.value) || {} : {}; } catch (e) { bets = {}; }
     history = [];
@@ -228,7 +230,8 @@
   tbl.addEventListener('click', function (e) {
     var c = e.target.closest('[data-chip]');
     if (c) { var inp = tbl.querySelector('[data-stake]'); if (inp) { inp.value = c.getAttribute('data-chip'); inp.focus(); } return; }
-    if (game !== 'wheel' || busy) return;
+    if (game === 'keno' && !busy) { kenoClick(e); return; }
+    if (!CLOTH || busy) return;
     var cv = e.target.closest('[data-chipval]');
     if (cv) { chip = Number(cv.getAttribute('data-chipval')); tbl.querySelectorAll('[data-chipval]').forEach(function (x) { x.classList.toggle('on', x === cv); x.setAttribute('aria-checked', String(x === cv)); }); return; }
     if (e.target.closest('[data-clear]')) { bets = {}; history = []; paintBets(); return; }
@@ -247,18 +250,19 @@
 
   tbl.addEventListener('contextmenu', function (e) {
     var place = e.target.closest('[data-cloth] [data-place]');
-    if (!place || game !== 'wheel') return;
+    if (!place || !CLOTH) return;
     e.preventDefault();
     var k = place.getAttribute('data-place');
     if (bets[k]) { delete bets[k]; history = history.filter(function (h) { return h[0] !== k; }); paintBets(); }
   });
 
-  function spinTo(n, then) {
+  function spinTo(n, then, slot) {
     var sp = tbl.querySelector('[data-spinner]');
     var ball = tbl.querySelector('[data-ball]');
     if (!sp || reduce) return then();
-    var a = 360 / ORDER.length;
-    var idx = ORDER.indexOf(n);
+    var slots = Number(sp.getAttribute('data-slots')) || ORDER.length;
+    var a = 360 / slots;
+    var idx = typeof slot === 'number' ? slot : ORDER.indexOf(n);
     var m = /rotate\((-?[\d.]+)deg\)/.exec(sp.style.transform || '');
     var cur = m ? Number(m[1]) : 0;
     var target = Math.floor(cur / 360) * 360 - 360 * 5 - idx * a;
@@ -280,19 +284,26 @@
       swap(j.html);
       setPurse(j.purse);
       if (j.lastout) { var lo = document.querySelector('[data-lastout]'); if (lo) lo.innerHTML = j.lastout; }
-      if (game === 'hazard') shake();
+      if (game === 'hazard' || game === 'cage') shake();
       if (game === 'wheel') { var w = tbl.querySelector('.wnum'); if (w && !reduce) w.classList.add('pop'); }
       result();
       busy = false;
       focusFirst();
     };
     if (game === 'wheel' && typeof j.spin === 'number') return spinTo(j.spin, finish);
+    if (game === 'six' && typeof j.slot === 'number') return spinTo(null, finish, j.slot);
+    if (game === 'cage') {
+      var cg = tbl.querySelector('[data-cage]');
+      Snd.dice();
+      if (cg && !reduce) { cg.classList.remove('turning'); void cg.offsetWidth; cg.classList.add('turning'); setTimeout(function () { Snd.dice(); }, 450); return setTimeout(finish, 1100); }
+      return finish();
+    }
     var i = 0;
     (function next() {
       if (i >= frames.length) return finish();
       swap(frames[i++]);
       if (game === 'bones') shake();
-      setTimeout(next, reduce ? 300 : 800);
+      setTimeout(next, reduce ? 300 : (game === 'punto' ? 1000 : 800));
     })();
   }
 
@@ -304,7 +315,7 @@
     var sub = e.submitter;
     var url = (sub && sub.getAttribute('formaction')) || form.getAttribute('action');
     var fd = new FormData(form);
-    if (game === 'wheel') {
+    if (CLOTH) {
       if (!Object.keys(bets).length) { say('Put a chip on the cloth first.', 'bad'); return; }
       fd.set('bets', JSON.stringify(bets));
       fd.delete('place'); fd.delete('amount');
@@ -331,6 +342,94 @@
     var b = tbl.querySelector('[data-key="' + k + '"]:not([disabled])');
     if (b) { e.preventDefault(); b.click(); }
   });
+
+  var kpicks = [];
+  function kenoWire() {
+    var h = tbl.querySelector('[data-kpicks]');
+    kpicks = h && h.value ? h.value.split(',').map(Number).filter(Boolean) : [];
+    kenoPaint();
+  }
+  function kenoPaint() {
+    tbl.querySelectorAll('[data-kn]').forEach(function (b) { var on = kpicks.indexOf(Number(b.getAttribute('data-kn'))) >= 0; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+    var h = tbl.querySelector('[data-kpicks]'); if (h) h.value = kpicks.join(',');
+    var c = tbl.querySelector('[data-kcount]'); if (c) c.textContent = kpicks.length;
+    var felt = tbl.querySelector('[data-keno]'), pay = tbl.querySelector('[data-kpay]');
+    if (!felt || !pay) return;
+    var table = {}; try { table = JSON.parse(felt.getAttribute('data-pay')) || {}; } catch (e) {}
+    var t = table[kpicks.length];
+    if (!t) { pay.innerHTML = '<span class="hint">Pick numbers to see what they pay.</span>'; return; }
+    var ks = Object.keys(t).map(Number).sort(function (a, b) { return b - a; });
+    pay.innerHTML = '<span class="lbl">' + kpicks.length + (kpicks.length === 1 ? ' number' : ' numbers') + ': what a septim brings back</span><span class="kpaylist">' + ks.map(function (k) { return '<span><b>' + k + '</b> hit' + (k === 1 ? '' : 's') + ' → ×' + t[k] + '</span>'; }).join('') + '</span>';
+  }
+  function kenoClick(e) {
+    var b = e.target.closest('[data-kn]');
+    if (b) {
+      var n = Number(b.getAttribute('data-kn')), i = kpicks.indexOf(n);
+      if (i >= 0) kpicks.splice(i, 1); else if (kpicks.length < 10) kpicks.push(n); else { say('Ten numbers is the most on one ticket.', 'bad'); return; }
+      Snd.tick(); kenoPaint(); return;
+    }
+    if (e.target.closest('[data-kclear]')) { kpicks = []; kenoPaint(); return; }
+    if (e.target.closest('[data-kquick]')) {
+      var want = kpicks.length || 6, pool = []; for (var k = 1; k <= 80; k++) pool.push(k);
+      kpicks = []; while (kpicks.length < want) { kpicks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); }
+      Snd.chip(); kenoPaint();
+    }
+  }
+  if (game === 'keno') {
+    var skew = 0, kbusy = false, revealing = false;
+    var felt0 = tbl.querySelector('[data-keno]');
+    if (felt0) skew = Number(felt0.getAttribute('data-now')) - Date.now();
+    setInterval(function () {
+      var f = tbl.querySelector('[data-keno]'), c = tbl.querySelector('[data-kclock]');
+      if (!f || !c) return;
+      var left = Math.max(0, Number(f.getAttribute('data-next')) - (Date.now() + skew));
+      var s = Math.ceil(left / 1000);
+      c.textContent = revealing ? 'Drawing…' : (left <= 0 ? 'Now' : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'));
+      c.classList.toggle('low', s <= 10 && !revealing);
+    }, 250);
+    var kpoll = function () {
+      if (kbusy || busy || revealing || document.hidden) return;
+      var f = tbl.querySelector('[data-keno]'); if (!f) return;
+      kbusy = true;
+      fetch('/inn/keno/state.json?no=' + f.getAttribute('data-no') + '&last=' + f.getAttribute('data-last'), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (j.now) skew = j.now - Date.now();
+          if (j.same) { f.setAttribute('data-next', j.nextAt); return; }
+          if (!j.html) return;
+          var newDraw = j.last && Number(f.getAttribute('data-last')) !== j.last.no;
+          var done = function () {
+            var a = document.activeElement && tbl.contains(document.activeElement) ? document.activeElement.getAttribute('name') : null;
+            var keep = kpicks.slice(), stakeV = tbl.querySelector('[data-stake]') ? tbl.querySelector('[data-stake]').value : null;
+            swap(j.html);
+            if (!newDraw) { kpicks = keep; kenoPaint(); }
+            var st = tbl.querySelector('[data-stake]'); if (st && stakeV !== null) st.value = stakeV;
+            if (a) { var el = tbl.querySelector('[name="' + a + '"]'); if (el) el.focus(); }
+            setPurse(j.purse);
+            if (j.lastout) { var lo = document.querySelector('[data-lastout]'); if (lo) lo.innerHTML = j.lastout; }
+          };
+          if (!newDraw) return done();
+          revealing = true;
+          var box = tbl.querySelector('[data-kballs]');
+          var mine = kpicks.slice();
+          if (box) box.innerHTML = '';
+          tbl.querySelectorAll('[data-kn]').forEach(function (b) { b.classList.remove('drawn'); });
+          var i = 0, hits = 0;
+          (function drop() {
+            if (i >= j.last.balls.length) { revealing = false; done(); if (hits) { Snd.win(); } return; }
+            var n = j.last.balls[i++];
+            var hit = mine.indexOf(n) >= 0; if (hit) hits++;
+            if (box) { var s2 = document.createElement('span'); s2.className = 'kball drop' + (hit ? ' hit' : ''); s2.textContent = n; box.appendChild(s2); }
+            var cell = tbl.querySelector('[data-kn="' + n + '"]'); if (cell) cell.classList.add('drawn');
+            hit ? Snd.chip() : Snd.ball();
+            setTimeout(drop, reduce ? 60 : 380);
+          })();
+        })
+        .catch(function () {})
+        .then(function () { kbusy = false; });
+    };
+    setInterval(kpoll, 2000);
+  }
 
   wire();
 })();
