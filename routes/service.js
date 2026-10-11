@@ -35,7 +35,7 @@ function entryList(rows) {
 function honoursCard(r, u, csrf, self) {
   const got = H.awardsOf(r.who);
   const auto = H.autoFor(r.who);
-  const may = O.can(u, 'honours') && !self;
+  const may = O.can(u, 'honours');
   if (!got.length && !auto.length && !may) return '';
   return `<section class="card" id="honours">
     <div class="hrow"><h3 style="margin:0">Honours</h3>${H.ribbons(r.who, 'big')}</div>

@@ -78,6 +78,8 @@ ${(() => {
   });
 })()}
 
+<nav class="jump" aria-label="On this page"><span>On this page</span><a href="#honour">Face of the Day</a><a href="#tonight">Bruma tonight</a><a href="#goal">The goal</a><a href="#word">The County’s word</a><a href="#open">Open to anyone</a></nav>
+
 <div class="rule">
   <div class="line"></div>
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M11 2c3 4 5 6 5 9a5 5 0 0 1-10 0c0-3 2-5 5-9Z" fill="#E09A3E"/></svg>
@@ -104,7 +106,7 @@ ${require('../lib/townviews').front(req.user, req.session.csrf, {
 
 <div class="hallcols even" style="margin-top:34px">
   <div>
-    <section class="card wordcard">
+    <section class="card wordcard" id="word">
       <div class="eyebrow" style="margin-bottom:8px">The word of ${esc(whose)}</div>
       ${word ? `<h2 class="wordtitle">${esc(word.title)}</h2>
       <div class="wordbody">${word.text.split(/\n{2,}/).slice(0, 3).map(para =>
@@ -144,7 +146,7 @@ ${require('../lib/townviews').front(req.user, req.session.csrf, {
   </aside>
 </div>
 
-<section class="card" style="margin-top:22px">
+<section class="card" style="margin-top:22px" id="open">
   <div class="eyebrow" style="margin-bottom:6px">The Court of Bruma</div>
   <h3 style="margin:0 0 14px;font-size:23px">What is open to anyone</h3>
   <div class="choose">
@@ -165,7 +167,7 @@ ${require('../lib/townviews').front(req.user, req.session.csrf, {
     : `<p><a class="btn ghost" href="/login">Enter the Hall</a></p>`}
 </section>`;
 
-    res.page({ title: '', body, active: '', noDoors: true });
+    res.page({ title: '', body, active: '' });
   });
 
   app.get('/hall', (req, res) => {

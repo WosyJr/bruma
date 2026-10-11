@@ -37,7 +37,7 @@ ${may ? `<div class="grid two" style="margin-top:22px;align-items:start">
 <section class="card">
   <h3 style="margin-top:0">Give an honour</h3>
   <form method="post" action="/honours/give" class="stack">${V.hidden(req.session.csrf)}
-    <label>To whom<select name="who" required><option value="">Choose an officer</option>${people.filter(p => p.username !== req.user.username).map(p => `<option value="${esc(p.username)}">${esc(p.name)} · ${esc(p.officeName || '')}</option>`).join('')}</select></label>
+    <label>To whom<select name="who" required><option value="">Choose an officer</option>${people.map(p => `<option value="${esc(p.username)}">${esc(p.name)} · ${esc(p.officeName || '')}</option>`).join('')}</select></label>
     <label>The honour<select name="honour" required data-hpick>${H.types().map(t => `<option value="${esc(t.id)}" data-colors="${esc(t.colors.join(','))}">${esc(t.name)}</option>`).join('')}</select></label>
     <div class="hribline"><span class="rib big" data-hprev></span><span class="hint" data-hnote></span></div>
     <label>The citation<textarea name="citation" rows="2" maxlength="300" required placeholder="Held the north gate alone through the night of the raid."></textarea></label>
@@ -74,7 +74,6 @@ hp.addEventListener('change',hdraw);hdraw();
     const who = String((req.body || {}).who || '').toLowerCase();
     try {
       if (!who) throw new Error('Choose whom it is given to.');
-      if (who === req.user.username) throw new Error('No officer honours themselves.');
       const a = H.award(who, req.body || {}, req.user);
       req.session.flash = { text: a.name + ' is given the ' + a.honourName + '.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }
@@ -96,7 +95,6 @@ hp.addEventListener('change',hdraw);hdraw();
   app.post('/service/:who/honour', checkCsrf, need('honours'), wrap((req, res) => {
     const who = String(req.params.who || '').toLowerCase();
     try {
-      if (who === req.user.username) throw new Error('No officer honours themselves.');
       const a = H.award(who, req.body || {}, req.user);
       req.session.flash = { text: a.name + ' is given the ' + a.honourName + '.' };
     } catch (e) { req.session.flash = { err: true, text: e.message }; }

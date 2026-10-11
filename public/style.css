@@ -1424,3 +1424,8 @@ body.tutopen{overflow:hidden}
 .halls .menu a::after{display:none}
 body .halls.grouped{position:relative;z-index:60}.halls .grp[open]{z-index:61}
 .gate .writtext a{color:#8a1e1e;text-decoration-color:rgba(138,30,30,.4)}
+.jump{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;margin:18px 0 0;font-size:14.5px}
+.jump span{font:500 11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--eyebrow);margin-right:4px}
+.jump a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--edge2)}
+.jump a:hover{color:var(--bright);border-bottom-color:var(--accent)}
+html{scroll-behavior:smooth}
