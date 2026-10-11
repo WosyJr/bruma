@@ -2,6 +2,7 @@
   var tables = document.querySelector('[data-livetables]');
   var feed = document.querySelector('[data-livefeed]');
   var state = document.querySelector('[data-livestate]');
+  var back = document.querySelector('[data-liveback]');
   if (!tables || !window.fetch) return;
   var busy = false;
   function tick() {
@@ -12,9 +13,11 @@
       .then(function (j) {
         if (tables.innerHTML !== j.tables) tables.innerHTML = j.tables;
         if (feed && feed.innerHTML !== j.feed) feed.innerHTML = j.feed;
-        if (state) { state.textContent = 'Live'; state.className = 'live on'; }
+        var bh = j.back || '<p class="empty">No tables are open in the back room.</p>';
+        if (back && back.getAttribute('data-h') !== bh) { back.innerHTML = bh; back.setAttribute('data-h', bh); }
+        if (state) { state.textContent = 'Live'; state.className = 'livestate on'; }
       })
-      .catch(function () { if (state) { state.textContent = 'Lost the connection, trying again…'; state.className = 'live off'; } })
+      .catch(function () { if (state) { state.textContent = 'Lost the connection, trying again…'; state.className = 'livestate off'; } })
       .then(function () { busy = false; });
   }
   setInterval(tick, 2000);

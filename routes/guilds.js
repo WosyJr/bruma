@@ -175,7 +175,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
           const here = r.step === mineStep;
           const held = roll.filter(m => m.rank === r.id).length;
           return `<li class="rung${here ? ' here' : ''}">
-            <span class="rl">${esc(r.letter)}</span>
+            <span class="rl">${esc(r.code)}</span>
             <span class="rn"><b>${esc(r.name)}</b><i>${esc(r.tier)}</i></span>
             <span class="rd">${esc(r.note)}</span>
             <span class="rh">${here ? '<em>you</em>' : (held ? held : '')}</span>
@@ -186,7 +186,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
 
     <section class="card">
       <div class="eyebrow" style="margin-bottom:6px">Further duties</div>
-      <p class="hint" style="margin:0 0 14px">${esc(ladder[6].name)} and above may be given a second office alongside their rank.</p>
+      <p class="hint" style="margin:0 0 14px">${esc((ladder[Math.min(6, ladder.length - 3)] || ladder[ladder.length - 2] || ladder[0]).name)} and above may be given a second office alongside their rank.</p>
       <div class="duties">
         ${duties.map(d => `<div class="duty">
           <b>${esc(d.name)}</b>
@@ -339,7 +339,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
         </summary>
         <form method="post" action="/guilds/${esc(g.id)}/members/${esc(m.id)}">${V.hidden(req.session.csrf)}
           <label><span>Rank</span><select name="rank">${ladder.map(r =>
-            `<option value="${r.id}"${r.id === m.rank ? ' selected' : ''}>${esc(r.letter)} — ${esc(r.name)}</option>`).join('')}</select></label>
+            `<option value="${r.id}"${r.id === m.rank ? ' selected' : ''}>${esc(r.code)} — ${esc(r.name)}</option>`).join('')}</select></label>
           <label><span>Standing</span><select name="standing">${G.STANDINGS.map(x =>
             `<option value="${x.id}"${x.id === m.standing ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
           <label><span>Trade</span><input name="trade" type="text" maxlength="100" value="${esc(m.trade)}"></label>
@@ -373,7 +373,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
           <input id="mname" name="name" type="text" maxlength="100" required>
           <label for="mgrade">At what rank</label>
           <select id="mgrade" name="grade">${ladder.map(r =>
-            `<option value="${r.id}"${r.id === 'a' ? ' selected' : ''}>${esc(r.letter)} — ${esc(r.name)}</option>`).join('')}</select>
+            `<option value="${r.id}"${r.id === 'a' ? ' selected' : ''}>${esc(r.code)} — ${esc(r.name)}</option>`).join('')}</select>
           <label for="mtrade">Their trade, if it is worth saying</label>
           <input id="mtrade" name="trade" type="text" maxlength="100">
           <div class="btnrow"><button class="btn" type="submit">Admit them</button></div>

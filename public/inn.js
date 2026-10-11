@@ -2,52 +2,62 @@
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var Snd = (function () {
-    var ctx = null, on = true;
+    var ctx = null, out = null, on = true;
     try { on = localStorage.getItem('innSound') !== 'off'; } catch (e) { on = true; }
     function ac() {
       if (!on) return null;
       var A = window.AudioContext || window.webkitAudioContext;
       if (!A) return null;
-      if (!ctx) { try { ctx = new A(); } catch (e) { return null; } }
+      if (!ctx) {
+        try {
+          ctx = new A();
+          var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200; lp.Q.value = 0.5;
+          var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -24; comp.knee.value = 18; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2;
+          var master = ctx.createGain(); master.gain.value = 0.55;
+          master.connect(lp); lp.connect(comp); comp.connect(ctx.destination);
+          out = master;
+        } catch (e) { ctx = null; return null; }
+      }
       if (ctx.state === 'suspended') ctx.resume();
       return ctx;
     }
-    function tone(f, t0, dur, type, vol, slide) {
+    function tone(f, t0, dur, type, vol, slide, attack) {
       var c = ac(); if (!c) return;
-      var o = c.createOscillator(), g = c.createGain();
+      var o = c.createOscillator(), g = c.createGain(), t = c.currentTime + (t0 || 0), at = attack || 0.012;
       o.type = type || 'sine';
-      o.frequency.setValueAtTime(f, c.currentTime + t0);
-      if (slide) o.frequency.exponentialRampToValueAtTime(slide, c.currentTime + t0 + dur);
-      g.gain.setValueAtTime(0.0001, c.currentTime + t0);
-      g.gain.exponentialRampToValueAtTime(vol || 0.2, c.currentTime + t0 + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + t0 + dur);
-      o.connect(g); g.connect(c.destination);
-      o.start(c.currentTime + t0); o.stop(c.currentTime + t0 + dur + 0.05);
+      o.frequency.setValueAtTime(f, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol || 0.05, t + at);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(out);
+      o.start(t); o.stop(t + dur + 0.05);
     }
-    function noise(t0, dur, vol, freq, q) {
+    function bell(f, t0, dur, vol) { tone(f, t0, dur, 'sine', vol, 0, 0.006); tone(f * 2.01, t0, dur * 0.6, 'sine', (vol || 0.05) * 0.25, 0, 0.006); }
+    function hush(t0, dur, vol, freq, type) {
       var c = ac(); if (!c) return;
       var n = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
-      for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+      for (var i = 0; i < n; i++) { var k = i / n; d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * Math.min(1, k * 3)) * Math.pow(1 - k, 1.5); }
       var src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-      src.buffer = buf; f.type = 'bandpass'; f.frequency.value = freq || 2500; f.Q.value = q || 1;
-      g.gain.value = vol || 0.3;
-      src.connect(f); f.connect(g); g.connect(c.destination);
-      src.start(c.currentTime + t0);
+      src.buffer = buf; f.type = type || 'lowpass'; f.frequency.value = freq || 1400; f.Q.value = 0.7;
+      g.gain.value = vol || 0.08;
+      src.connect(f); f.connect(g); g.connect(out);
+      src.start(c.currentTime + (t0 || 0));
     }
     return {
       get on() { return on; },
       set: function (v) { on = v; try { localStorage.setItem('innSound', v ? 'on' : 'off'); } catch (e) {} if (v) ac(); },
-      click: function () { noise(0, 0.03, 0.15, 3000, 2); },
-      card: function (t) { noise(t || 0, 0.07, 0.35, 3800, 0.8); noise((t || 0) + 0.02, 0.05, 0.2, 1400, 1); },
-      chip: function () { tone(2400, 0, 0.05, 'triangle', 0.12); tone(3100, 0.03, 0.06, 'triangle', 0.09); noise(0, 0.04, 0.12, 5000, 3); },
-      dice: function () { for (var i = 0; i < 7; i++) { noise(i * 0.045 + Math.random() * 0.02, 0.04, 0.28, 1800 + Math.random() * 1500, 2); } noise(0.36, 0.06, 0.3, 900, 1.5); },
-      tick: function (t) { tone(1600, t || 0, 0.025, 'square', 0.04); },
-      ball: function () { tone(900, 0, 0.08, 'triangle', 0.12, 500); noise(0.02, 0.08, 0.15, 2600, 2); },
-      win: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, i * 0.09, 0.32, 'triangle', 0.14); }); for (var i = 0; i < 6; i++) tone(2600 + Math.random() * 900, 0.35 + i * 0.05, 0.08, 'sine', 0.05); },
-      big: function () { [392, 523, 659, 784, 1047, 1319].forEach(function (f, i) { tone(f, i * 0.08, 0.4, 'triangle', 0.15); }); },
-      lose: function () { tone(330, 0, 0.28, 'sawtooth', 0.06, 196); tone(247, 0.18, 0.4, 'triangle', 0.08, 147); },
-      push: function () { tone(440, 0, 0.18, 'sine', 0.08); tone(440, 0.16, 0.18, 'sine', 0.06); },
-      door: function () { tone(196, 0, 0.5, 'triangle', 0.08); noise(0, 0.2, 0.1, 400, 0.7); }
+      click: function () { tone(740, 0, 0.06, 'sine', 0.035); },
+      card: function (t) { hush(t || 0, 0.11, 0.1, 1600); tone(150, (t || 0) + 0.05, 0.08, 'sine', 0.035); },
+      chip: function () { bell(1568, 0, 0.18, 0.035); bell(2093, 0.045, 0.2, 0.028); },
+      dice: function () { for (var i = 0; i < 5; i++) { hush(i * 0.06 + Math.random() * 0.02, 0.05, 0.09, 900 + Math.random() * 400); tone(210 + Math.random() * 60, i * 0.06, 0.05, 'sine', 0.03); } },
+      tick: function (t) { tone(988, t || 0, 0.05, 'sine', 0.025); },
+      ball: function () { tone(660, 0, 0.12, 'sine', 0.04, 520); },
+      win: function () { [523, 659, 784, 1047].forEach(function (f, i) { bell(f, i * 0.1, 0.7, 0.05); }); },
+      big: function () { [392, 523, 659, 784, 1047, 1319].forEach(function (f, i) { bell(f, i * 0.09, 0.9, 0.05); }); },
+      lose: function () { tone(392, 0, 0.35, 'triangle', 0.04, 0, 0.03); tone(311, 0.2, 0.55, 'triangle', 0.04, 0, 0.03); },
+      push: function () { bell(587, 0, 0.35, 0.035); bell(587, 0.18, 0.35, 0.03); },
+      door: function () { tone(165, 0, 0.12, 'sine', 0.06); hush(0, 0.08, 0.06, 500); tone(165, 0.16, 0.12, 'sine', 0.05); hush(0.16, 0.08, 0.05, 500); }
     };
   })();
   window.InnSound = Snd;
@@ -165,7 +175,7 @@
       Array.prototype.forEach.call(c.children, function (el, k) {
         if (k >= had && !el.classList.contains('ghost')) {
           if (!reduce) { el.classList.add('dealt'); el.style.animationDelay = (n * 0.09) + 's'; }
-          Snd.card(n * 0.09); n++;
+          if (n < 6) Snd.card(n * 0.09); n++;
         }
       });
     });

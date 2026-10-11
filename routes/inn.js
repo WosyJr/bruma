@@ -1,6 +1,10 @@
 const I = require('../lib/inn');
 const IV = require('../lib/innviews');
 const J = require('../lib/innjack');
+const PvP = require('../lib/innpvp');
+const BV = require('../lib/innbackviews');
+const O = require('../lib/offices');
+const Wr = require('../lib/innwhere');
 
 const tries = new Map();
 function limited(key, max, ms) {
@@ -31,6 +35,7 @@ module.exports = function (app, { checkCsrf, need }) {
 
   app.get('/inn', (req, res) => {
     const d = base(req);
+    d.backOpen = PvP.open().length;
     res.page({ title: 'The Jerall View Inn', wide: true, body: IV.lobby(d) });
   });
 
@@ -85,7 +90,13 @@ module.exports = function (app, { checkCsrf, need }) {
   });
 
   app.get('/inn/ledger', need('inn'), (req, res) => {
-    res.page({ title: 'The Inn Ledger', active: 'innledger', wide: true, body: IV.ledgerPage({ csrf: req.session.csrf, ledger: I.ledger(), house: I.house() }) });
+    res.page({ title: 'The Inn Ledger', active: 'innledger', wide: true, body: IV.ledgerPage({ csrf: req.session.csrf, ledger: I.ledger(), house: I.house(), where: Wr.tonight(), next: Wr.tomorrow() }) });
+  });
+
+  app.post('/inn/ledger/where', checkCsrf, need('inn'), (req, res) => {
+    const w = Wr.setTonight((req.body || {}).place, req.user);
+    req.session.flash = { text: 'Tonight the tables are in ' + w.place + '.' };
+    res.redirect('/inn/ledger');
   });
 
   app.post('/inn/ledger/house', checkCsrf, need('inn'), (req, res) => {
@@ -131,7 +142,7 @@ module.exports = function (app, { checkCsrf, need }) {
   function liveRows() {
     const house = I.house();
     const nets = I.nets();
-    return I.live(15).map(p => {
+    return I.live(15).filter(p => I.IDS.includes(p.lastGame)).map(p => {
       const d = { user: null, csrf: '', patron: p, house, outcomes: {}, requests: [], net: 0 };
       d.view = viewOf(p.lastGame, d);
       const secs = Math.round((Date.now() - Date.parse(p.lastAt)) / 1000);
@@ -139,13 +150,17 @@ module.exports = function (app, { checkCsrf, need }) {
     });
   }
 
+  function liveBack() {
+    return BV.liveBack(PvP.open().map(r => PvP.tick(r.id) || r).filter(r => r.status !== 'done').map(r => ({ r, html: BV.roomPart({ me: '', canSit: false, keeperEye: true, csrf: '' }, r).replace(/<form[\s\S]*?<\/form>/g, '') })));
+  }
+
   app.get('/inn/ledger/live', need('inn'), (req, res) => {
-    res.page({ title: 'The tables, live', active: 'innledger', wide: true, body: IV.livePage({ rows: liveRows(), feed: I.feed(15) }) });
+    res.page({ title: 'The tables, live', active: 'innledger', wide: true, body: IV.livePage({ rows: liveRows(), feed: I.feed(15), back: liveBack() }) });
   });
 
   app.get('/inn/ledger/live.json', need('inn'), (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ tables: IV.liveTables(liveRows()), feed: IV.liveFeed(I.feed(15)) });
+    res.json({ tables: IV.liveTables(liveRows()), feed: IV.liveFeed(I.feed(15)), back: liveBack() });
   });
 
   app.get('/inn/fairness', need('inn'), (req, res) => {
@@ -161,6 +176,78 @@ module.exports = function (app, { checkCsrf, need }) {
     res.redirect(scope === 'everything' ? '/inn/ledger' : '/inn/fairness');
   });
 
+  const keeper = req => !!(req.user && O.can(req.user, 'inn'));
+  const roomData = (req, r) => {
+    const patron = I.current(req);
+    const seatedP = I.seated(patron);
+    const me = seatedP ? patron.id : '';
+    const sitting = me ? PvP.liveRoomOf(me) : null;
+    return { user: req.user, csrf: req.session.csrf, patron, me, canSit: seatedP && !sitting && patron.purse >= r.stake, keeperEye: keeper(req) && !(me && sitting) };
+  };
+  const canWatch = req => keeper(req) || I.seated(I.current(req));
+  const stateOf = (req, r) => {
+    const d = roomData(req, r);
+    return { v: r.v, status: r.status, ev: r.ev || null, me: d.me ? PvP.seatOf(r, d.me) : -1, won: !!(d.me && r.ev && r.ev.kind === 'end' && (r.ev.winners || []).includes(d.me)), html: BV.roomPart(d, r), chat: BV.chatPart(r), log: BV.logPart(r), purse: d.patron && I.seated(d.patron) ? d.patron.purse : null };
+  };
+
+  app.get('/inn/back', (req, res) => {
+    const d = base(req);
+    d.open = PvP.open().map(r => PvP.tick(r.id) || r).filter(r => r.status !== 'done');
+    d.recent = PvP.recent();
+    res.page({ title: 'The back room · The Jerall View Inn', wide: true, body: BV.backPage(d) });
+  });
+
+  app.post('/inn/back/open', checkCsrf, (req, res) => {
+    const p = I.current(req);
+    if (!I.seated(p)) { req.session.flash = { err: true, text: 'Ask for a seat at the door first.' }; return res.redirect('/inn'); }
+    if (limited('innroom|' + p.id, 20, 60 * 60 * 1000)) { req.session.flash = { err: true, text: 'You have opened a lot of tables this hour.' }; return res.redirect('/inn/back'); }
+    try { const r = PvP.create(p.id, req.body || {}); return res.redirect('/inn/room/' + r.id); }
+    catch (e) { req.session.flash = { err: true, text: e.message }; return res.redirect('/inn/back'); }
+  });
+
+  app.get('/inn/room/:id', (req, res, next) => {
+    const r = PvP.tick(req.params.id);
+    if (!r) return next();
+    if (!canWatch(req)) { req.session.flash = { err: true, text: 'Ask for a seat at the door first.' }; return res.redirect('/inn'); }
+    res.page({ title: r.title + ' · The back room', wide: true, body: BV.roomPage(roomData(req, r), r) });
+  });
+
+  app.get('/inn/room/:id/state.json', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    if (!canWatch(req)) return res.status(403).json({ error: 'Ask for a seat at the door first.' });
+    const r = PvP.tick(req.params.id);
+    if (!r) return res.status(404).json({ error: 'That table has been cleared away.', gone: true });
+    if (String(req.query.v || '') === String(r.v)) return res.json({ v: r.v, same: true });
+    res.json(stateOf(req, r));
+  });
+
+  const ROOMACTS = ['join', 'start', 'leave', 'rebuy', 'back', 'say', 'throw', 'bank', 'bid', 'liar', 'fold', 'check', 'call', 'raise', 'allin'];
+  app.post('/inn/room/:id/:what', checkCsrf, (req, res, next) => {
+    const id = String(req.params.id);
+    const what = String(req.params.what);
+    if (!ROOMACTS.includes(what)) return next();
+    const json = wantsJson(req);
+    const back = '/inn/room/' + encodeURIComponent(id);
+    const fail = (code, text) => json ? res.status(code).json({ error: text }) : (req.session.flash = { err: true, text }, res.redirect(back));
+    const p = I.current(req);
+    if (!I.seated(p) && !(what === 'leave' && p)) return fail(403, 'Ask for a seat at the door first.');
+    if (limited('innpvp|' + p.id, 120, 60 * 1000)) return fail(429, 'Easy, traveller. Give the table a moment.');
+    const b = req.body || {};
+    try {
+      if (what === 'join') PvP.join(id, p.id);
+      else if (what === 'start') PvP.start(id, p.id);
+      else if (what === 'leave') PvP.leave(id, p.id);
+      else if (what === 'rebuy') PvP.rebuy(id, p.id);
+      else if (what === 'back') PvP.back(id, p.id);
+      else if (what === 'say') { if (limited('innsay|' + p.id, 20, 60 * 1000)) throw new Error('Slow down; let the others get a word in.'); PvP.say(id, p.id, b.text); }
+      else PvP.act(id, p.id, what, { q: b.q, f: b.f, to: b.to });
+    } catch (e) { return fail(400, e.message); }
+    if (what === 'leave' && !json) return res.redirect('/inn/back');
+    if (!json) return res.redirect(back);
+    const r = PvP.get(id);
+    res.json(r ? stateOf(req, r) : { gone: true });
+  });
+
   app.post('/inn/:game/learned', checkCsrf, (req, res) => {
     const game = String(req.params.game);
     if (!I.GAME[game]) return res.status(404).end();
@@ -172,6 +259,7 @@ module.exports = function (app, { checkCsrf, need }) {
   app.get('/inn/:game', (req, res, next) => {
     const game = String(req.params.game);
     if (!I.GAME[game]) return next();
+    if (!I.IDS.includes(game)) return res.redirect('/inn/back');
     const d = base(req);
     d.view = viewOf(game, d);
     d.lastBet = (req.session.innBet || {})[game];
@@ -182,7 +270,7 @@ module.exports = function (app, { checkCsrf, need }) {
   app.post('/inn/:game/:what', checkCsrf, (req, res, next) => {
     const game = String(req.params.game);
     const what = String(req.params.what);
-    if (!I.GAME[game]) return next();
+    if (!I.IDS.includes(game)) return next();
     const json = wantsJson(req);
     const back = '/inn/' + game;
     const fail = (code, text) => json ? res.status(code).json({ error: text }) : (req.session.flash = { err: true, text }, res.redirect(back));
