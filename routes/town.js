@@ -5,7 +5,6 @@ const T = require('../lib/town');
 const TV = require('../lib/townviews');
 const W = require('../lib/watch');
 const Pr = require('../lib/proclaim');
-const Inn = require('../lib/inn');
 
 const tries = new Map();
 function limited(key, max, ms) {
@@ -49,9 +48,6 @@ function herald(key, user) {
     petitions, answered, reports,
     pass: (Pr.STATE_BY_ID[pass.state] || Pr.STATES[0]).name,
     face: T.faceOfDay(new Date(b - 86400000)),
-    cards: Inn.board('cards', key),
-    bones: Inn.board('bones', key),
-    inn: Inn.week(key),
     cheers: T.cheersWeek(key),
     honours: require('../lib/honours').inWeek(key),
     mayHerald: O.can(user, 'herald')
