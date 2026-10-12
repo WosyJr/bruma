@@ -96,8 +96,8 @@
     tbl.addEventListener('change', function (e) {
       if (!e.target.matches('[data-mines]')) return;
       var lad = tbl.querySelector('[data-mladder]'); if (!lad) return;
-      var m = Number(e.target.value), out = [];
-      [1, 2, 3, 5, 8].forEach(function (k) { if (k > 25 - m) return; var v = 1; for (var i = 0; i < k; i++) v *= (25 - i) / (25 - m - i); out.push(k + (k === 1 ? ' stone' : ' stones') + ' ×' + (Math.floor(v * 0.97 * 100) / 100).toFixed(2)); });
+      var m = Number(e.target.value), out = [], bf = tbl.querySelector('[data-barrow]'), edge = bf ? Number(bf.getAttribute('data-edge')) || 0.92 : 0.92;
+      [1, 2, 3, 5, 8].forEach(function (k) { if (k > 25 - m) return; var v = 1; for (var i = 0; i < k; i++) v *= (25 - i) / (25 - m - i); out.push(k + (k === 1 ? ' stone' : ' stones') + ' ×' + (Math.floor(v * edge * 100) / 100).toFixed(2)); });
       lad.textContent = out.join(' · ');
     });
     tbl.addEventListener('submit', function (e) {

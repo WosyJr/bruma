@@ -132,6 +132,7 @@ require('./lib/announce').install();
   setTimeout(reckon, 10000).unref();
   setInterval(reckon, 15 * 60 * 1000).unref();
   const Inn = require('./lib/inn');
+  try { const n = Inn.retireMend(); if (n) console.log('Handed back ' + n + ' Red or Black stake(s) from the retired table.'); } catch (e) { console.error('retire', e.message); }
   setInterval(() => { try { Inn.kenoDraw(); } catch (e) { console.error('lottery', e.message); } }, 5000).unref();
   setInterval(() => { try { Inn.eventsTick(); } catch (e) { console.error('events', e.message); } }, 500).unref();
 }

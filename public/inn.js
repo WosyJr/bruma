@@ -115,6 +115,57 @@
     if (!tut.hidden) { document.body.classList.add('tutopen'); next.focus(); }
   }
 
+  var Broke = (function () {
+    var open = false;
+    function csrf() { var c = document.querySelector('input[name=_csrf]'); return c ? c.value : ''; }
+    function show() {
+      if (open || document.getElementById('broke') || !document.querySelector('#inn[data-game]')) return;
+      open = true;
+      var tries = 0;
+      var wrap = document.createElement('div');
+      wrap.id = 'broke'; wrap.className = 'broke';
+      wrap.innerHTML = '<div class="brokebox" role="alertdialog" aria-modal="true" aria-labelledby="brokehead">' +
+        '<button type="button" class="brokex" data-brokex aria-label="Close">✕</button>' +
+        '<div class="brokecoin" aria-hidden="true">◉</div>' +
+        '<h3 id="brokehead">Your purse is empty</h3>' +
+        '<p>Old Brannoc turns your purse upside down. Not a septim falls out.</p>' +
+        '<form method="post" action="/inn/more" class="brokeform"><input type="hidden" name="_csrf" value="' + csrf().replace(/"/g, '') + '"><input name="amount" inputmode="numeric" placeholder="How much" aria-label="Septims you want"><input type="hidden" name="note" value="Out of coin at the tables"><button class="btn go" type="submit">Ask for more coin</button></form>' +
+        '<p class="hint" data-brokesay>Hand the coin over in game and a keeper fills your purse.</p></div>';
+      document.body.appendChild(wrap);
+      var box = wrap.querySelector('.brokebox');
+      var say = wrap.querySelector('[data-brokesay]');
+      var lines = ['Not so fast, traveller.', 'Brannoc blocks the door.', 'The purse is still empty.'];
+      function attempt(e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        tries++;
+        if (tries >= 2) { close(); return; }
+        var w = window.innerWidth, h = window.innerHeight, bw = box.offsetWidth, bh = box.offsetHeight;
+        var x = Math.max(8, Math.random() * Math.max(8, w - bw - 16)), y = Math.max(8, Math.random() * Math.max(8, h - bh - 16));
+        box.classList.add('dodged');
+        box.style.left = x + 'px'; box.style.top = y + 'px';
+        box.classList.remove('wiggle'); void box.offsetWidth; box.classList.add('wiggle');
+        say.textContent = lines[Math.floor(Math.random() * lines.length)] + ' Try that again.';
+        if (window.InnSound) window.InnSound.lose();
+      }
+      function close() { open = false; wrap.remove(); document.removeEventListener('keydown', key, true); try { sessionStorage.setItem('innBroke', String(Date.now())); } catch (e) {} }
+      function key(e) { if (e.key === 'Escape') attempt(e); }
+      wrap.querySelector('[data-brokex]').addEventListener('click', attempt);
+      wrap.addEventListener('click', function (e) { if (e.target === wrap) attempt(e); });
+      document.addEventListener('keydown', key, true);
+      if (window.InnSound) window.InnSound.lose();
+      var inp = wrap.querySelector('input[name=amount]'); if (inp) setTimeout(function () { inp.focus(); }, 50);
+    }
+    function check(n) { if (Number(n) === 0) show(); }
+    return { show: show, check: check };
+  })();
+  window.InnBroke = Broke;
+  (function () {
+    var pm = document.querySelector('[data-purse]');
+    if (!pm || String(pm.textContent).replace(/[^\d]/g, '') !== '0') return;
+    var last = 0; try { last = Number(sessionStorage.getItem('innBroke')) || 0; } catch (e) {}
+    if (Date.now() - last > 10 * 60000) setTimeout(Broke.show, 400);
+  })();
+
   var inn = document.getElementById('inn');
   var tbl = document.getElementById('tbl');
   if (!inn || !tbl || inn.dataset.ready) return;
@@ -133,6 +184,7 @@
     document.querySelectorAll('[data-purse]').forEach(function (el) {
       var from = Number(String(el.textContent).replace(/[^\d-]/g, '')) || 0;
       var to = Number(n) || 0;
+      if (to === 0 && from > 0) setTimeout(Broke.show, 900);
       if (from === to) { el.textContent = fmt(to); return; }
       el.classList.remove('pup', 'pdown'); void el.offsetWidth; el.classList.add(to > from ? 'pup' : 'pdown');
       if (reduce) { el.textContent = fmt(to); return; }

@@ -359,6 +359,7 @@ module.exports = function (app, { checkCsrf, need }) {
   app.get('/inn/:game', (req, res, next) => {
     const game = String(req.params.game);
     if (!I.GAME[game]) return next();
+    if (I.GAME[game].retired) return res.redirect('/inn');
     if (!I.IDS.includes(game)) return res.redirect('/inn/back');
     const d = base(req);
     d.view = viewOf(game, d);
