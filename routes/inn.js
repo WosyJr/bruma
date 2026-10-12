@@ -363,7 +363,7 @@ module.exports = function (app, { checkCsrf, need }) {
     d.view = viewOf(game, d);
     d.lastBet = (req.session.innBet || {})[game];
     const p = GV.eventParts(game, d);
-    return { meta: p.meta, now: Date.now(), parts: { stage: p.stage, ctl: p.ctl, list: p.list, hist: p.hist }, purse: d.patron.purse, tonight: I.tonightFor(d.patron.id, game), lastout: IV.lastOut(game, d.outcomes[game]) };
+    return { meta: p.meta, now: Date.now(), parts: { stage: p.stage, side: p.side, ctl: p.ctl, list: p.list, hist: p.hist }, purse: d.patron.purse, tonight: I.tonightFor(d.patron.id, game), lastout: IV.lastOut(game, d.outcomes[game]) };
   };
 
   app.get('/inn/:game/state.json', (req, res, next) => {
@@ -408,6 +408,20 @@ module.exports = function (app, { checkCsrf, need }) {
     d.tutorial = !learned(req, game);
     d.tonight = I.seated(d.patron) ? I.tonightFor(d.patron.id, game) : null;
     res.page({ title: I.GAME[game].name + ' · The Jerall View Inn', wide: true, body: IV.tablePage(game, d), after: IV.bardTag() });
+  });
+
+  app.post('/inn/arena/cheer', checkCsrf, (req, res) => {
+    const json = /json/.test(String(req.get('accept') || ''));
+    const p = I.current(req);
+    let out = null, err = '';
+    try {
+      if (!I.seated(p)) throw new Error('Ask for a seat at the door first.');
+      if (limited('inncheer|' + p.id, 40, 60 * 1000)) throw new Error('Save your voice for the knockout.');
+      out = I.cheer(p.id, (req.body || {}).side);
+    } catch (e) { err = e.message; }
+    if (json) { res.setHeader('Cache-Control', 'no-store'); return err ? res.status(400).json({ error: err }) : res.json(out); }
+    if (err) req.session.flash = { err: true, text: err };
+    res.redirect('/inn/arena');
   });
 
   app.post('/inn/:game/:what', checkCsrf, (req, res, next) => {

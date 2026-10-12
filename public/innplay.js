@@ -255,7 +255,6 @@
       el.innerHTML = html;
       if (k) putInputs(el, k);
       if (name === 'list' && !reduce) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
-      if (name === 'stage') blowsShown = -1;
       if (name === 'ctl') { var xf = el.querySelector('form[data-exotic]'); if (xf) exPrice(xf); }
     };
     var apply = function (j) {
@@ -263,7 +262,7 @@
       if (j.now) skew = j.now - Date.now();
       var before = meta;
       meta = j.meta;
-      ['stage', 'ctl', 'list', 'hist'].forEach(function (k) { swapPart(k, j.parts[k]); });
+      ['stage', 'side', 'ctl', 'list', 'hist'].forEach(function (k) { if (j.parts[k] !== undefined) swapPart(k, j.parts[k]); });
       if (typeof j.purse === 'number') setPurse(j.purse);
       lastout(j);
       changed(before, meta);
@@ -332,19 +331,6 @@
       var out = f.querySelector('[data-exprice]'); if (out) out.textContent = dup ? 'pick different horses' : (map[ks.join('-')] || '–');
     };
     tbl.addEventListener('change', function (e) { var f = e.target.closest('form[data-exotic]'); if (f) exPrice(f); });
-    var blowsShown = -1;
-    var blowText = function (ev, names) {
-      var A = names[ev.by], D = names[1 - ev.by];
-      if (ev.kind === 'dodge') return D + ' slips ' + A + '’s blow.';
-      if (ev.kind === 'block') return D + ' blocks; ' + ev.dmg + ' gets through.';
-      var EL = { fire: 'fire', frost: 'frost', shock: 'lightning' };
-      if (ev.move === 'arrow') return ev.kind === 'power' ? A + '’s arrow finds a gap in ' + D + '’s guard: ' + ev.dmg + '!' : A + ' looses an arrow into ' + D + ' for ' + ev.dmg + '.';
-      if (ev.move === 'spell') return A + (ev.kind === 'power' ? ' unleashes a storm of ' : ' hurls ') + (EL[ev.el] || 'fire') + ' at ' + D + ': ' + ev.dmg + (ev.kind === 'power' ? '!' : '.');
-      if (ev.move === 'bash') return A + ' bashes ' + D + ' with a shield for ' + ev.dmg + '.';
-      if (ev.kind === 'power') return A + ' lands a crushing blow on ' + D + ': ' + ev.dmg + '!';
-      return A + ' strikes ' + D + ' for ' + ev.dmg + '.';
-    };
-
     var frame = function () {
       var n = now();
       var m = meta;
@@ -396,47 +382,7 @@
           if (dc) dc.textContent = m.phase === 'done' ? 'Race ' + m.no + ' is run · the next book opens in ' + clock(m.nextAt - n) : 'They’re off! ' + (lead >= 0 && m.names ? m.names[lead] + ' leads' : '') + ' · ' + clock(m.endAt - n);
         }
       }
-      if (game === 'arena') {
-        var ring = tbl.querySelector('[data-ring]');
-        if (ring && window.InnArena && ring.offsetParent !== null) {
-          try { window.InnArena.draw(ring, m, n, reduce ? null : function (ev, fin) { if (fin) { Snd.big(); return; } if (ev.kind === 'dodge') Snd.tick(); else if (ev.kind === 'block') Snd.chip(); else if (ev.move === 'spell') Snd.ball(); else if (ev.kind === 'power') Snd.dice(); else Snd.card(); }); } catch (e) {}
-        }
-        var ac = tbl.querySelector('[data-aclock]'), list = tbl.querySelector('[data-blows]');
-        if (m.phase === 'bet') {
-          if (ac) ac.textContent = 'Bout ' + m.no + ' in ' + clock(m.startAt - n);
-          if (list && blowsShown !== 0) { list.innerHTML = ''; blowsShown = 0; }
-        } else if (m.log && list) {
-          var L2 = m.log.length, step = (m.endAt - m.startAt) / (L2 + 1);
-          var want = m.phase === 'done' ? L2 : Math.min(L2, Math.max(0, Math.floor((n - m.startAt) / step)));
-          if (want < blowsShown || blowsShown < 0) { list.innerHTML = ''; blowsShown = 0; }
-          while (blowsShown < want) {
-            var ev = m.log[blowsShown];
-            var li = document.createElement('li');
-            li.className = ev.kind;
-            li.textContent = blowText(ev, m.names);
-            list.insertBefore(li, list.firstChild);
-            blowsShown++;
-            if (want - blowsShown < 1 && m.phase !== 'done') {
-              var hitCard = tbl.querySelector('.fighter.f' + (1 - ev.by));
-              if (hitCard && !reduce && ev.kind !== 'dodge') { hitCard.classList.remove('struck'); void hitCard.offsetWidth; hitCard.classList.add('struck'); }
-            }
-          }
-          if (want === L2 && !list.querySelector('.ko')) {
-            var last = m.log[L2 - 1];
-            var ko = document.createElement('li'); ko.className = 'ko';
-            ko.textContent = m.names[1 - last.by] + ' goes down. ' + m.names[last.by] + ' wins the bout!';
-            list.insertBefore(ko, list.firstChild);
-          }
-          while (list.children.length > 9) list.lastChild.remove();
-          var hp = want ? m.log[want - 1].hp : m.hp;
-          [0, 1].forEach(function (i) {
-            var bar = tbl.querySelector('[data-hp="' + i + '"]'), num = tbl.querySelector('[data-hpn="' + i + '"]');
-            if (bar) bar.style.width = Math.max(0, hp[i] / m.hp[i] * 100).toFixed(1) + '%';
-            if (num) num.textContent = hp[i] + ' / ' + m.hp[i];
-          });
-          if (ac) ac.textContent = m.phase === 'done' ? 'Next bout in ' + clock(m.nextAt - n) : 'Fight!';
-        }
-      }
+      if (game === 'arena' && window.InnArena) { try { window.InnArena.tick(tbl, m, n, reduce, Snd); } catch (e) {} }
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
