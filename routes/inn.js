@@ -133,6 +133,11 @@ module.exports = function (app, { checkCsrf, need }) {
     const what = String(req.params.what);
     const b = req.body || {};
     try {
+      if (what === 'merge') {
+        const m = I.mergeGuest(req.params.id, req.user);
+        req.session.flash = { text: m.from + ' is merged into ' + m.into + (m.amount ? ', and ' + I.septims(m.amount) + ' moved into their purse.' : '.') };
+        return res.redirect('/inn/ledger');
+      }
       if (what === 'purse') {
         const p = I.purse(req.params.id, String(b.kind || ''), b.amount, b.note, req.user);
         req.session.flash = { text: p.name + '’s purse now holds ' + I.septims(p.purse) + '.' };
