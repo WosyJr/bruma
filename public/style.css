@@ -2332,3 +2332,22 @@ body.hasbard main.wrap{padding-bottom:84px}
 .bard:not(.playing) .bardbtn[data-toggle]{display:none}
 .bard:not(.playing) .bardmini{padding:4px;border-radius:999px}
 .pmini.tonight b.up{color:var(--goodink,#9FD39A)}.pmini.tonight b.down{color:var(--badink,#E2A08A)}.pmini.tonight b.pop{animation:sayin .5s ease-out}.innwho{flex-wrap:wrap}
+.climbx.under{color:#E2A08A}
+.pmini.favour{color:#F4C774;background:rgba(244,199,116,.12);border-radius:999px;padding:2px 10px;animation:bardpulse 2s ease-in-out infinite}
+.tiphint{position:absolute;z-index:70;display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:12px;background:#F4C774;color:#1A1206;font:14px/1.4 var(--serif);box-shadow:0 10px 30px rgba(0,0,0,.45);pointer-events:none;animation:tiphint .35s ease-out}
+.tiphint b{font-size:15px}
+.tiphint .btn{pointer-events:auto;align-self:flex-start;background:#1A1206;color:#F4C774;border-color:#1A1206}
+.tiphint::after{content:"";position:absolute;left:calc(var(--ax,30px) - 9px);bottom:-9px;border:9px solid transparent;border-bottom:0;border-top-color:#F4C774}
+.tiphint.below::after{bottom:auto;top:-9px;border-top:0;border-bottom:9px solid #F4C774}
+.tiphint.out{opacity:0;transition:opacity .25s}
+@keyframes tiphint{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.innwatch{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:80;display:flex;flex-direction:column;gap:10px;align-items:flex-end;max-width:calc(100vw - 32px)}
+.watchpop{display:flex;gap:12px;align-items:flex-start;width:min(340px,calc(100vw - 32px));padding:14px;border-radius:12px;background:#F4C774;color:#1A1206;font:14px/1.4 var(--serif);box-shadow:0 12px 34px rgba(0,0,0,.5);animation:watchin .4s cubic-bezier(.3,1.4,.5,1)}
+.wpicon{font-size:28px;line-height:1}
+.wpbody{display:flex;flex-direction:column;gap:4px;min-width:0}
+.wpbody b{font-size:15.5px}
+.wpacts{display:flex;gap:12px;align-items:center;margin-top:4px}
+.wpacts .btn{background:#1A1206;color:#F4C774;border-color:#1A1206}
+.wpacts .linkish{color:#1A1206}
+@keyframes watchin{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.tiphint,.watchpop{animation:none}}

@@ -494,6 +494,13 @@
     var sg = function (n) { return (n > 0 ? '+' : (n < 0 ? '−' : '')) + fmt(Math.abs(n)); };
     [['[data-tonight]', t.all], ['[data-here]', t.here]].forEach(function (p) { var el = document.querySelector(p[0]); if (!el) return; var was = el.textContent; el.textContent = sg(p[1]); el.className = p[1] > 0 ? 'up' : (p[1] < 0 ? 'down' : ''); if (was !== el.textContent && !reduce) { el.classList.add('pop'); setTimeout(function () { el.classList.remove('pop'); }, 700); } });
   }
+  (function favourClock() {
+    var f = document.querySelector('[data-favour]');
+    if (!f) return;
+    var until = Number(f.getAttribute('data-favour'));
+    var tick = function () { var left = Math.ceil((until - Date.now()) / 1000); if (left <= 0) { f.remove(); return; } var b = f.querySelector('[data-favourleft]'); if (b) b.textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'); setTimeout(tick, 1000); };
+    tick();
+  })();
   window.InnUI = { setTonight: setTonight, setPurse: setPurse, result: result, burst: burst, say: say, fmt: fmt };
   wire();
 })();

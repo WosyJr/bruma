@@ -90,9 +90,16 @@ module.exports = function (app, { checkCsrf, need }) {
     const p = I.current(req);
     if (!I.seated(p)) { req.session.flash = { err: true, text: 'Ask for a seat at the door first.' }; return res.redirect('/inn'); }
     if (limited('inntip|' + p.id, 30, 60 * 60 * 1000)) { req.session.flash = { err: true, text: 'Brannoc waves you off. “Enough, enough.”' }; return res.redirect(back); }
-    try { const t = I.tip(p.id, b.amount); req.session.flash = { text: 'You tip ' + I.septims(t.amount) + '. ' + t.say }; }
+    try { const t = I.tip(p.id, b.amount); req.session.flash = { text: 'You tip ' + I.septims(t.amount) + '. ' + t.say + ' Luck leans your way for two minutes on stakes up to ' + I.septims(t.favour.cap) + '.' }; }
     catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect(back);
+  });
+
+  app.get('/inn/upcoming.json', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const p = I.current(req);
+    if (!I.seated(p)) return res.json({ now: Date.now(), list: [] });
+    res.json({ now: Date.now(), list: I.upcoming(p.id) });
   });
 
   app.get('/inn/door.json', (req, res) => {
@@ -132,7 +139,7 @@ module.exports = function (app, { checkCsrf, need }) {
   });
 
   app.get('/inn/ledger', need('inn'), (req, res) => {
-    res.page({ title: 'The Inn Ledger', active: 'innledger', wide: true, body: IV.ledgerPage({ csrf: req.session.csrf, coin: I.coinInHand(), ledger: I.ledger(), house: I.house(), where: Wr.tonight(), next: Wr.tomorrow() }) });
+    res.page({ title: 'The Inn Ledger', active: 'innledger', wide: true, after: IV.watchTag(), body: IV.ledgerPage({ csrf: req.session.csrf, coin: I.coinInHand(), ledger: I.ledger(), house: I.house(), where: Wr.tonight(), next: Wr.tomorrow() }) });
   });
 
   app.post('/inn/ledger/where', checkCsrf, need('inn'), (req, res) => {
@@ -198,7 +205,7 @@ module.exports = function (app, { checkCsrf, need }) {
     return I.live(15).filter(p => I.IDS.includes(p.lastGame)).sort((a, b) => String(a.name).localeCompare(String(b.name))).map(p => {
       const d = { user: null, csrf: '', patron: p, house, outcomes: {}, requests: [], net: 0 };
       d.view = viewOf(p.lastGame, d);
-      return { tilt: (I.tilts().patrons[p.id] || {}).level || 0, id: p.id, name: p.name, game: p.lastGame, purse: p.purse, held: p.held || 0, net: nets[p.id] || 0, at: p.lastAt, html: IV.watchPart(p.lastGame, d) };
+      return { favour: !!(p.favour && p.favour.until > Date.now()), tilt: (I.tilts().patrons[p.id] || {}).level || 0, id: p.id, name: p.name, game: p.lastGame, purse: p.purse, held: p.held || 0, net: nets[p.id] || 0, at: p.lastAt, html: IV.watchPart(p.lastGame, d) };
     });
   }
 
@@ -215,7 +222,7 @@ module.exports = function (app, { checkCsrf, need }) {
 
   app.get('/inn/ledger/live', need('inn'), (req, res) => {
     const rows = liveRows();
-    res.page({ title: 'The tables, live', active: 'innledger', wide: true, body: IV.livePage({ csrf: req.session.csrf, tilts: I.tilts(), rows, feed: I.feed(15), back: liveBack(), summary: liveSummary(rows) }) });
+    res.page({ title: 'The tables, live', active: 'innledger', wide: true, after: IV.watchTag(), body: IV.livePage({ csrf: req.session.csrf, tilts: I.tilts(), rows, feed: I.feed(15), back: liveBack(), summary: liveSummary(rows) }) });
   });
 
   app.get('/inn/ledger/live.json', need('inn'), (req, res) => {
@@ -231,7 +238,7 @@ module.exports = function (app, { checkCsrf, need }) {
   });
 
   app.get('/inn/fairness', need('inn'), (req, res) => {
-    res.page({ title: 'How the tables ran', active: 'innledger', wide: true, body: IV.fairnessPage({ csrf: req.session.csrf, coin: I.coinInHand(), week: I.week(require('../lib/town').weekKey()) }) });
+    res.page({ title: 'How the tables ran', active: 'innledger', wide: true, after: IV.watchTag(), body: IV.fairnessPage({ csrf: req.session.csrf, coin: I.coinInHand(), week: I.week(require('../lib/town').weekKey()) }) });
   });
 
   app.post('/inn/ledger/reset', checkCsrf, need('inn'), (req, res) => {

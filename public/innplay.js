@@ -350,24 +350,24 @@
       var m = meta;
       if (game === 'crash') {
         var big = tbl.querySelector('[data-mult]'), note = tbl.querySelector('[data-note]'), curve = tbl.querySelector('[data-curve]'), trail = tbl.querySelector('[data-trail]'), head = tbl.querySelector('[data-head]'), cash = tbl.querySelector('[data-cashbtn]');
-        var t = 0, mult = 1;
-        if (m.phase === 'fly') { t = Math.max(0, n - m.flyAt); mult = Math.exp(m.k * t / 1000); }
-        if (m.phase === 'crashed' && m.point) { mult = m.point; t = Math.log(m.point) / m.k * 1000; }
+        var s0 = m.start || 1, t = 0, mult = s0;
+        if (m.phase === 'fly') { t = Math.max(0, n - m.flyAt); mult = s0 * Math.exp(m.k * t / 1000); }
+        if (m.phase === 'crashed' && m.point) { mult = m.point; t = Math.log(Math.max(m.point, s0) / s0) / m.k * 1000; }
         mult = Math.floor(mult * 100) / 100;
-        if (big) { big.textContent = x2(mult) + '×'; big.classList.toggle('fell', m.phase === 'crashed'); big.classList.toggle('waiting', m.phase === 'bet'); }
+        if (big) { big.textContent = x2(mult) + '×'; big.classList.toggle('fell', m.phase === 'crashed'); big.classList.toggle('waiting', m.phase === 'bet'); big.classList.toggle('under', m.phase === 'fly' && mult < 1); }
         if (note) note.textContent = m.phase === 'bet' ? 'Takes off in ' + Math.max(0, Math.ceil((m.betUntil - n) / 1000)) + 's' : (m.phase === 'fly' ? 'Flight ' + m.no + ' is climbing' : 'The dragon fell at ×' + x2(m.point));
         if (cash) cash.textContent = 'Cash out · ' + fmt(Math.floor(Number(cash.getAttribute('data-amount')) * mult));
         if (curve) {
           var T = Math.max(t, 8000), M = Math.max(mult, 2), d = '';
-          var X = function (ti) { return 40 + ti / T * 540; }, Y = function (mi) { return 230 - (mi - 1) / (M - 1) * 200; };
+          var X = function (ti) { return 40 + ti / T * 540; }, Y = function (mi) { return 230 - (mi - s0) / (M - s0) * 200; };
           var steps = 48;
-          for (var i = 0; i <= steps; i++) { var ti = t * i / steps; var mi = Math.exp(m.k * ti / 1000); d += (i ? 'L' : 'M') + X(ti).toFixed(1) + ' ' + Y(Math.min(mi, mult)).toFixed(1); }
+          for (var i = 0; i <= steps; i++) { var ti = t * i / steps; var mi = s0 * Math.exp(m.k * ti / 1000); d += (i ? 'L' : 'M') + X(ti).toFixed(1) + ' ' + Y(Math.min(mi, mult)).toFixed(1); }
           if (m.phase === 'bet') d = 'M40 230';
           curve.setAttribute('d', d);
           if (trail) trail.setAttribute('d', m.phase === 'bet' ? 'M40 230' : d + 'L' + X(t).toFixed(1) + ' 230L40 230Z');
           if (head) { head.setAttribute('cx', m.phase === 'bet' ? 40 : X(t).toFixed(1)); head.setAttribute('cy', m.phase === 'bet' ? 230 : Y(mult).toFixed(1)); head.setAttribute('class', 'head' + (m.phase === 'crashed' ? ' fell' : '')); }
           var yl = tbl.querySelector('[data-ylab]');
-          if (yl) { var lab = [1, 1 + (M - 1) / 2, M].map(function (v) { return '<text x="34" y="' + (Y(v) + 4).toFixed(1) + '">' + (v >= 10 ? Math.round(v) : v.toFixed(1)) + '×</text>'; }).join(''); if (yl.innerHTML !== lab) yl.innerHTML = lab; }
+          if (yl) { var lab = [s0, 1, M].filter(function (v, i, a) { return a.indexOf(v) === i; }).map(function (v) { return '<text x="34" y="' + (Y(v) + 4).toFixed(1) + '">' + (v >= 10 ? Math.round(v) : v.toFixed(1)) + '×</text>'; }).join(''); if (yl.innerHTML !== lab) yl.innerHTML = lab; }
         }
       }
       if (game === 'races') {
