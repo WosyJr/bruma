@@ -204,7 +204,39 @@
     ctx.strokeStyle = f.colour || '#3E5A7A'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(sx, sy, 15, 0, Math.PI * 2); ctx.stroke();
   }
 
+  var SPR = 0.316, WARMED = {};
+  function spriteFighter(ctx, f, x, dir, pose, t, i) {
+    var y = GROUND;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 52, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.translate(x, y - (pose.hop || 0));
+    if (pose.down) { ctx.rotate(-dir * pose.down * Math.PI / 2.1); ctx.translate(0, pose.down * 4); }
+    ctx.scale(dir, 1);
+    var bob = Math.sin(t / 260 + i * 2) * 1.6 * (1 - (pose.down || 0));
+    ctx.rotate((pose.lean || 0) * 0.22);
+    ctx.translate(0, bob);
+    var arm = pose.arm === undefined ? -0.4 : pose.arm;
+    var sw = Math.max(0, Math.min(1, (-arm - 0.3) / 1.9));
+    if (pose.draw) sw = Math.max(sw, pose.draw * 0.8);
+    if (pose.cast) sw = Math.max(sw, pose.cast * 0.9);
+    if (pose.guard) sw = Math.min(sw, 0.15);
+    var kit = window.InnFighters.kitFor(f);
+    var key = (f && f.name) || ((f && f.race) + '|' + (f && f.style) + '|' + (f && f.arm) + '|' + (f && f.element));
+    if (!WARMED[key]) { WARMED[key] = 1; window.InnFighters.warm(f, key); }
+    var fr = window.InnFighters.frame(kit, { swing: sw }, key);
+    var k = SPR;
+    ctx.drawImage(fr.img, 0, 0, fr.w, fr.h, -fr.ox * k, -fr.oy * k, fr.w * k, fr.h * k);
+    if (pose.flash) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = 'rgba(255,60,40,' + (0.5 * pose.flash) + ')';
+      ctx.beginPath(); ctx.ellipse(0, -72, 34, 64, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.restore();
+  }
+
   function fighter(ctx, f, x, dir, pose, t, i) {
+    if (window.InnFighters) return spriteFighter(ctx, f, x, dir, pose, t, i);
     var y = GROUND, col = f.colour || '#7A5A3A', skin = SKIN[f.race] || SKIN.nord, st = f.style;
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 52, 10, 0, 0, Math.PI * 2); ctx.fill();
