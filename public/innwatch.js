@@ -68,7 +68,7 @@
     ['form[data-exotic]', 'exotic', 'Bet the order', 'Name the first two (exacta) or first three (trifecta) in order for much bigger prices.'],
     ['.propsrow', 'props', 'Side bets', 'Bet how long the bout lasts, or how it ends: by the blade, a spell or an arrow.'],
     ['canvas[data-ring]', 'ring', 'The ring', 'The bout plays out here blow by blow. Everyone in the hall sees the same fight.'],
-    ['[data-scratch]', 'seals', 'The Three Seals', 'Scratch the wax with your pointer, or tap a seal. Three alike pays, up to the Dragon at 100 times.'],
+    ['[data-scratch]', 'seals', 'The Three Seals', 'Click each seal to break the wax. Three alike pays, up to the Dragon at 100 times.'],
     ['[data-tourney]', 'tourney', 'A tournament', 'Join for the buy-in. Your winnings at that table count until time is called, and the top three split the pot.'],
     ['[data-rankcard]', 'rank', 'Your standing', 'Every septim you stake counts toward Copper, Silver, Gold and Dragon. Higher standing stretches Brannoc’s favour.'],
     ['.pvphrases', 'phrases', 'Table talk', 'One tap tosses a phrase across the table. Or type your own below.'],

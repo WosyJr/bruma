@@ -94,39 +94,40 @@
     var setupWax = function (cv, onDone) {
       var w = cv.width;
       var ctx = cv.getContext('2d');
+      ctx.fillStyle = '#E8D8B4';
+      ctx.fillRect(0, 0, w, w);
+      ctx.strokeStyle = 'rgba(196,174,126,.6)';
+      ctx.lineWidth = 5;
+      for (var st = -w; st < w * 2; st += 12) { ctx.beginPath(); ctx.moveTo(st, w); ctx.lineTo(st + w, 0); ctx.stroke(); }
       waxEmblem(ctx, w);
-      var gone = false, strokes = 0, lastChip = 0;
+      var gone = false;
+      var cracks = function () {
+        var cx = w / 2, cy = w / 2;
+        ctx.strokeStyle = 'rgba(30,8,4,.8)';
+        ctx.lineWidth = 2.4;
+        for (var i = 0; i < 7; i++) {
+          var a = i / 7 * Math.PI * 2 + 0.4;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          var r = 0, x = cx, y = cy;
+          for (var sgm = 0; sgm < 4; sgm++) { r += w * 0.13; var aa = a + (Math.random() - 0.5) * 0.7; x = cx + Math.cos(aa) * r; y = cy + Math.sin(aa) * r; ctx.lineTo(x, y); }
+          ctx.stroke();
+        }
+      };
       var reveal = function () {
         if (gone) return;
         gone = true;
-        cv.classList.add('gone');
         Snd.card();
-        setTimeout(function () { cv.remove(); onDone(); }, reduce ? 0 : 320);
+        if (reduce) { cv.remove(); onDone(); return; }
+        cracks();
+        setTimeout(function () {
+          cv.classList.add('gone');
+          setTimeout(function () { cv.remove(); onDone(); }, 300);
+        }, 130);
       };
-      var ratio = function () {
-        var d = ctx.getImageData(0, 0, w, w).data;
-        var clear = 0, total = 0;
-        for (var i = 3; i < d.length; i += 32) { total++; if (!d[i]) clear++; }
-        return clear / total;
-      };
-      var down = false;
-      var rub = function (e) {
-        if (gone) return;
-        var r = cv.getBoundingClientRect();
-        var x = (e.clientX - r.left) / r.width * w, y = (e.clientY - r.top) / r.height * w;
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.beginPath(); ctx.arc(x, y, w * 0.12, 0, Math.PI * 2); ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
-        strokes++;
-        if (Date.now() - lastChip > 160) { lastChip = Date.now(); Snd.chip(); }
-        if (strokes > 8 && ratio() > 0.45) reveal();
-      };
-      if (reduce) { cv.addEventListener('click', reveal); cv.title = 'Break the seal'; return { reveal: reveal }; }
-      cv.addEventListener('pointerdown', function (e) { down = true; try { cv.setPointerCapture && cv.setPointerCapture(e.pointerId); } catch (x) {} rub(e); });
-      cv.addEventListener('pointerup', function () { down = false; if (!gone && strokes > 8 && ratio() > 0.35) reveal(); });
-      cv.addEventListener('pointerleave', function () { if (!gone && strokes > 8 && ratio() > 0.35) reveal(); });
-      cv.addEventListener('pointermove', function (e) { if (down || e.buttons || e.pointerType === 'touch') rub(e); });
-      cv.addEventListener('click', function () { strokes += 3; if (strokes > 12 && ratio() > 0.3) reveal(); else if (strokes > 24) reveal(); });
+      cv.addEventListener('pointerdown', reveal);
+      cv.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); reveal(); } });
+      cv.title = 'Break the seal';
       return { reveal: reveal };
     };
     tbl.addEventListener('submit', function (e) {
@@ -143,7 +144,7 @@
         var j = r.j;
         var box = tbl.querySelector('[data-tkbox]');
         box.innerHTML = j.ticketHtml;
-        sayIn(tbl, 'The ink is dry. Scratch the wax away.', '');
+        sayIn(tbl, 'The ink is dry. Break the seals.', '');
         var left = 3;
         var finish = function () {
           var t = j.ticket;

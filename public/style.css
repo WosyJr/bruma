@@ -2430,7 +2430,7 @@ body.hasbard main.wrap{padding-bottom:84px}
 .tkglyph.g-septim{color:#B8862F}.tkglyph.g-flagon{color:#8E5A2A}.tkglyph.g-sword{color:#5A6472}.tkglyph.g-crown{color:#A2762A}.tkglyph.g-dragon{color:#8E2F24}
 .tkunder.lit .tkglyph{text-shadow:0 0 18px rgba(244,199,116,.9)}
 .ticket.tkwin{box-shadow:0 10px 30px rgba(0,0,0,.45),0 0 24px rgba(244,199,116,.4),inset 0 0 0 4px rgba(184,134,47,.3)}
-.tkwax{position:absolute;inset:6%;width:88%;height:88%;cursor:pointer;touch-action:none;transition:opacity .3s ease-out,transform .3s ease-out}
+.tkwax{position:absolute;inset:0;width:100%;height:100%;cursor:pointer;touch-action:manipulation;border-radius:8px;transition:opacity .3s ease-out,transform .3s ease-out}
 .tkwax.gone{opacity:0;transform:scale(1.15);pointer-events:none}
 .tkfoot{font:14px/1.45 var(--serif);text-align:center;color:#4A3214;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center}
 .tkpays{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
