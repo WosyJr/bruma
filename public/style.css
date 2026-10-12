@@ -2035,3 +2035,11 @@ html{scroll-behavior:smooth}
 .draughts .dhit.picked{fill:rgba(244,199,116,.35)}
 .draughts .dhit.tgt{fill:rgba(167,194,122,.45)}
 @media (prefers-reduced-motion:reduce){.rcard.live{animation:none}}
+.liveswap,.liveswap *{animation:none !important}
+.subtabs{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;border-bottom:1px solid var(--edge2)}
+.subtabs a{padding:8px 14px;border:1px solid transparent;border-bottom:none;border-radius:6px 6px 0 0;color:var(--muted);text-decoration:none;margin-bottom:-1px}
+.subtabs a b{font:500 11px var(--mono);margin-left:6px;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--eyebrow)}
+.subtabs a:hover{color:var(--ink)}
+.subtabs a.on{color:var(--bright);border-color:var(--edge2);background:var(--panel,rgba(255,255,255,.03))}
+.subtabs.small{margin:0 0 14px}
+.subtabs.small a{padding:5px 11px;font-size:14px}

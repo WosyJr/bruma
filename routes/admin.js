@@ -3,6 +3,8 @@ const Fl = require('../lib/flourish');
 const Sv = require('../lib/service');
 const O = require('../lib/offices');
 const U = require('../lib/users');
+const G = require('../lib/guilds');
+const Lad = require('../lib/guildladder');
 
 const esc = V.esc;
 
@@ -16,6 +18,38 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     const people = U.list().filter(p => full || mayAppoint.includes(p.office));
     const byOffice = {};
     people.forEach(p => { byOffice[p.office] = (byOffice[p.office] || 0) + 1; });
+    const seeGuilds = full || O.can(u, 'guildsee');
+    const tab = seeGuilds && req.query.tab === 'guilds' ? 'guilds' : 'officers';
+    const tabs = seeGuilds ? `<nav class="subtabs" aria-label="Who to show"><a href="/officers"${tab === 'officers' ? ' class="on" aria-current="page"' : ''}>Officers <b>${people.length}</b></a><a href="/officers?tab=guilds"${tab === 'guilds' ? ' class="on" aria-current="page"' : ''}>Guild members <b>${U.listMembers().length}</b></a></nav>` : '';
+    if (tab === 'guilds') {
+      const gf = O.GUILD_BY_ID[req.query.guild] ? String(req.query.guild) : '';
+      const rows = U.listMembers(gf).map(x => {
+        const m = G.memberOf(x.member.id);
+        const r = m ? Lad.rankOf(m.guild, Lad.normalise(m.guild, m.rank || m.grade)) : null;
+        const locked = !m || m.struck || m.standing === 'expelled';
+        return { x, m, r, locked, guild: O.GUILD_BY_ID[x.member.guild] };
+      }).sort((a, b) => (a.guild ? a.guild.name : '').localeCompare(b.guild ? b.guild.name : '') || ((b.r ? b.r.step : 0) - (a.r ? a.r.step : 0)) || a.x.name.localeCompare(b.x.name));
+      const noLogin = O.GUILDS.filter(g => !gf || g.id === gf).reduce((n, g) => n + G.roll(g.id).filter(m => !U.memberLogin(m.id)).length, 0);
+      const gbody = `
+<section class="card">
+  <h2>The officers of the County</h2>
+  <p class="lede">Members of the guilds who enter the hall with their own login. They see the public pages and their own guild hall, and nothing else.</p>
+  ${tabs}
+</section>
+<section class="card">
+  <div class="subtabs small"><a href="/officers?tab=guilds"${gf ? '' : ' class="on"'}>Every guild</a>${O.GUILDS.map(g => `<a href="/officers?tab=guilds&guild=${g.id}"${gf === g.id ? ' class="on"' : ''}>${esc(g.name.replace(/^The /, ''))}</a>`).join('')}</div>
+  ${rows.length ? V.table([
+      { head: 'Name', cell: r => `<b>${esc(r.x.name)}</b>` },
+      { head: 'Enters as', cell: r => esc(r.x.username) },
+      { head: 'Guild', cell: r => r.guild ? `<a href="/guilds/${esc(r.guild.id)}">${esc(r.guild.name)}</a>` : '—' },
+      { head: 'Rank', cell: r => r.r ? esc(r.r.code + ' ' + r.r.name) : '—' },
+      { head: 'Standing', cell: r => r.locked ? `<span class="tag out">${r.m && r.m.standing === 'expelled' ? 'expelled' : 'struck'} · login locked</span>` : (r.x.mustChange ? '<span class="tag gold">not in yet</span>' : `<span class="tag in">${esc(G.standingName(r.m.standing))}</span>`) },
+      { head: 'Last entered', cell: r => esc(V.when(r.x.lastLogin)) }
+    ], rows) : V.empty(gf ? 'Nobody in this guild has a login yet.' : 'No guild member has a login yet.')}
+  ${noLogin ? `<p class="hint" style="margin-top:12px">${noLogin} ${noLogin === 1 ? 'member on the rolls has' : 'members on the rolls have'} no login yet. Give them one from their guild hall: open their name on the roll and press <b>Give them a login</b>.</p>` : ''}
+</section>`;
+      return res.page({ title: 'Guild members', body: gbody, active: '', wide: true });
+    }
 
     const body = `
 <section class="card">
@@ -23,6 +57,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
   <p class="lede">${full
     ? 'Who stands in which office. The Count, the Countess and the Steward reach everything; everyone else reaches what their office opens.'
     : 'The offices your own office may appoint to, and who stands in them.'}</p>
+  ${tabs}
 </section>
 
 ${offices.length ? '' : V.empty('Your office may not appoint to any other yet. Ask the Steward to set which offices it appoints to.')}

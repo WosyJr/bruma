@@ -430,6 +430,30 @@ initOwn();
   main.addEventListener('pointerdown', function () { touched = Date.now(); });
   main.addEventListener('keydown', function () { touched = Date.now(); });
   function keyOf(d, i) { var s = d.querySelector('summary'); return (s ? s.textContent.replace(/\s+/g, ' ').trim() : '') || ('#' + i); }
+  function calm(el) { if (el.nodeType === 1) { el.classList.add('liveswap'); } }
+  function morph(a, b) {
+    if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) { var n = b.cloneNode(true); calm(n); a.parentNode.replaceChild(n, a); return; }
+    if (a.nodeType === 3 || a.nodeType === 8) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+    if (a.nodeType !== 1) return;
+    if (a !== main) {
+      for (var i = a.attributes.length - 1; i >= 0; i--) { var nmA = a.attributes[i].name; if (!b.hasAttribute(nmA) && nmA !== 'open' && nmA !== 'data-ready' && nmA !== 'class') a.removeAttribute(nmA); }
+      for (var j = 0; j < b.attributes.length; j++) { var at = b.attributes[j]; if (at.name === 'class') continue; if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value); }
+      var keep = (a.getAttribute('class') || '').split(/\s+/).filter(function (c) { return c === 'liveswap' || c === 'counting'; });
+      var want = (b.getAttribute('class') || '').split(/\s+/).filter(Boolean).concat(keep).join(' ');
+      if ((a.getAttribute('class') || '') !== want) { if (want) a.setAttribute('class', want); else a.removeAttribute('class'); }
+      if (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT') return;
+    }
+    if (a.innerHTML === b.innerHTML) return;
+    var ac = Array.prototype.slice.call(a.childNodes), bc = Array.prototype.slice.call(b.childNodes);
+    if (ac.length !== bc.length) {
+      var same = 0;
+      while (same < ac.length && same < bc.length && ac[same].nodeType === bc[same].nodeType && (ac[same].nodeType !== 1 || ac[same].outerHTML === bc[same].outerHTML)) same++;
+      for (var k = ac.length - 1; k >= same; k--) a.removeChild(ac[k]);
+      for (var m = same; m < bc.length; m++) { var c = bc[m].cloneNode(true); calm(c); a.appendChild(c); }
+      return;
+    }
+    for (var q = 0; q < ac.length; q++) morph(ac[q], bc[q]);
+  }
   function opened() { var o = {}; main.querySelectorAll('details').forEach(function (d, i) { if (d.open) o[keyOf(d, i)] = 1; }); return o; }
   function swap(html, showFlash) {
     var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -446,7 +470,7 @@ initOwn();
     var oldFlash = main.querySelector('.flash');
     if (showFlash && flash && oldFlash) oldFlash.remove();
     if (flash && showFlash) flash.remove();
-    main.innerHTML = nm.innerHTML;
+    morph(main, nm);
     main.querySelectorAll('details').forEach(function (d, i) { if (open[keyOf(d, i)]) d.open = true; });
     window.scrollTo(0, y);
     var ns = doc.querySelector('.passstrip, .pass'), os = document.querySelector('.passstrip, .pass');
