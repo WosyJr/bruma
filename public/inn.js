@@ -338,6 +338,7 @@
     var finish = function () {
       swap(j.html);
       setPurse(j.purse);
+      setTonight(j.tonight);
       if (j.lastout) { var lo = document.querySelector('[data-lastout]'); if (lo) lo.innerHTML = j.lastout; }
       if (game === 'hazard' || game === 'cage') shake();
       if (game === 'wheel') { var w = tbl.querySelector('.wnum'); if (w && !reduce) w.classList.add('pop'); }
@@ -462,6 +463,7 @@
             var st = tbl.querySelector('[data-stake]'); if (st && stakeV !== null) st.value = stakeV;
             if (a) { var el = tbl.querySelector('[name="' + a + '"]'); if (el) el.focus(); }
             setPurse(j.purse);
+            setTonight(j.tonight);
             if (j.lastout) { var lo = document.querySelector('[data-lastout]'); if (lo) lo.innerHTML = j.lastout; }
           };
           if (!newDraw) return done();
@@ -487,6 +489,11 @@
     setInterval(kpoll, 2000);
   }
 
-  window.InnUI = { setPurse: setPurse, result: result, burst: burst, say: say, fmt: fmt };
+  function setTonight(t) {
+    if (!t) return;
+    var sg = function (n) { return (n > 0 ? '+' : (n < 0 ? '−' : '')) + fmt(Math.abs(n)); };
+    [['[data-tonight]', t.all], ['[data-here]', t.here]].forEach(function (p) { var el = document.querySelector(p[0]); if (!el) return; var was = el.textContent; el.textContent = sg(p[1]); el.className = p[1] > 0 ? 'up' : (p[1] < 0 ? 'down' : ''); if (was !== el.textContent && !reduce) { el.classList.add('pop'); setTimeout(function () { el.classList.remove('pop'); }, 700); } });
+  }
+  window.InnUI = { setTonight: setTonight, setPurse: setPurse, result: result, burst: burst, say: say, fmt: fmt };
   wire();
 })();

@@ -10,7 +10,7 @@
   var UI = window.InnUI || {};
   var fmt = function (n) { return Number(n || 0).toLocaleString('en-US'); };
   var setPurse = function (n) { if (UI.setPurse) UI.setPurse(n); else document.querySelectorAll('[data-purse]').forEach(function (el) { el.textContent = fmt(n); }); };
-  var lastout = function (j) { if (!j.lastout) return; var lo = document.querySelector('[data-lastout]'); if (lo) lo.innerHTML = j.lastout; };
+  var lastout = function (j) { if (j.tonight && UI.setTonight) UI.setTonight(j.tonight); if (!j.lastout) return; var lo = document.querySelector('[data-lastout]'); if (lo) lo.innerHTML = j.lastout; };
   var x2 = function (m) { return (Math.floor(m * 100) / 100).toFixed(2); };
   var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
 

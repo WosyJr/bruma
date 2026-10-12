@@ -2331,3 +2331,4 @@ body.hasbard main.wrap{padding-bottom:84px}
 .bard:not(.playing) .bardtitle{display:none}
 .bard:not(.playing) .bardbtn[data-toggle]{display:none}
 .bard:not(.playing) .bardmini{padding:4px;border-radius:999px}
+.pmini.tonight b.up{color:var(--goodink,#9FD39A)}.pmini.tonight b.down{color:var(--badink,#E2A08A)}.pmini.tonight b.pop{animation:sayin .5s ease-out}.innwho{flex-wrap:wrap}

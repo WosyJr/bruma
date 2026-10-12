@@ -19,7 +19,10 @@
     });
   }
   function applyFilter() {
-    var csrf = document.querySelector('[data-csrf]');
+    document.querySelectorAll('[data-lf]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-lf') === filter); });
+    tables.querySelectorAll('[data-live]').forEach(function (c) { c.hidden = !!filter && c.getAttribute('data-game') !== filter; });
+  }
+  var csrf = document.querySelector('[data-csrf]');
   var thumbs = document.querySelector('[data-thumbs]');
   if (thumbs) { document.body.classList.remove('thumbs'); thumbs.open = false; thumbs.addEventListener('toggle', function () { document.body.classList.toggle('thumbs', thumbs.open); }); }
   document.addEventListener('change', function (e) {
@@ -31,9 +34,6 @@
       .then(function (r) { sel.classList.add(r.ok ? 'saved' : 'failed'); var card = sel.closest('[data-live]'); if (card) card.classList.toggle('tilted', sel.value !== '0'); })
       .catch(function () { sel.classList.add('failed'); });
   });
-  document.querySelectorAll('[data-lf]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-lf') === filter); });
-    tables.querySelectorAll('[data-live]').forEach(function (c) { c.hidden = !!filter && c.getAttribute('data-game') !== filter; });
-  }
   function flash(c) { c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump'); }
   function cards(list) {
     var empty = tables.querySelector('.empty');

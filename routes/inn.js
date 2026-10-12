@@ -322,7 +322,7 @@ module.exports = function (app, { checkCsrf, need }) {
     d.view = viewOf('keno', d);
     const k = d.view;
     if (String(req.query.no || '') === String(k.no) && String(req.query.last || '') === String(k.last ? k.last.no : 0)) return res.json({ same: true, nextAt: k.nextAt, now: Date.now() });
-    res.json({ no: k.no, nextAt: k.nextAt, now: Date.now(), last: k.last ? { no: k.last.no, balls: k.last.balls } : null, html: IV.part('keno', d), purse: d.patron.purse, lastout: IV.lastOut('keno', d.outcomes.keno) });
+    res.json({ no: k.no, nextAt: k.nextAt, now: Date.now(), last: k.last ? { no: k.last.no, balls: k.last.balls } : null, html: IV.part('keno', d), purse: d.patron.purse, tonight: I.tonightFor(d.patron.id, 'keno'), lastout: IV.lastOut('keno', d.outcomes.keno) });
   });
 
   const evState = (req, game) => {
@@ -330,7 +330,7 @@ module.exports = function (app, { checkCsrf, need }) {
     d.view = viewOf(game, d);
     d.lastBet = (req.session.innBet || {})[game];
     const p = GV.eventParts(game, d);
-    return { meta: p.meta, now: Date.now(), parts: { stage: p.stage, ctl: p.ctl, list: p.list, hist: p.hist }, purse: d.patron.purse, lastout: IV.lastOut(game, d.outcomes[game]) };
+    return { meta: p.meta, now: Date.now(), parts: { stage: p.stage, ctl: p.ctl, list: p.list, hist: p.hist }, purse: d.patron.purse, tonight: I.tonightFor(d.patron.id, game), lastout: IV.lastOut(game, d.outcomes[game]) };
   };
 
   app.get('/inn/:game/state.json', (req, res, next) => {
@@ -373,6 +373,7 @@ module.exports = function (app, { checkCsrf, need }) {
     d.view = viewOf(game, d);
     d.lastBet = (req.session.innBet || {})[game];
     d.tutorial = !learned(req, game);
+    d.tonight = I.seated(d.patron) ? I.tonightFor(d.patron.id, game) : null;
     res.page({ title: I.GAME[game].name + ' · The Jerall View Inn', wide: true, body: IV.tablePage(game, d), after: IV.bardTag() });
   });
 
@@ -398,7 +399,7 @@ module.exports = function (app, { checkCsrf, need }) {
     const d = base(req);
     d.view = viewOf(game, d);
     d.lastBet = (req.session.innBet || {})[game];
-    const reply = { html: IV.part(game, d), purse: d.patron ? d.patron.purse : 0, lastout: IV.lastOut(game, d.outcomes[game]), happy: out.happy || 0 };
+    const reply = { html: IV.part(game, d), purse: d.patron ? d.patron.purse : 0, lastout: IV.lastOut(game, d.outcomes[game]), happy: out.happy || 0, tonight: I.tonightFor(patron.id, game) };
     if (game === 'cards' && out.settled && d.view.frames && d.view.frames.length > 1) {
       const hands = d.view.hands.map(h => Object.assign({}, h, { result: '', active: false }));
       reply.frames = d.view.frames.map((f, i) => IV.cardsPart(d, { dealer: f, dealerTotal: J.total(f).n, hands, say: i ? I.KEEPER + ' draws. He has ' + J.total(f).n + '.' : I.KEEPER + ' turns his card.', tone: '', staked: 0, frame: true }));
