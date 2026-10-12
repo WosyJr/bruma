@@ -57,7 +57,7 @@
     ['.pursebar', 'purse', 'Your purse', 'Every stake comes out of it and every win goes back in. Ask for more coin here and hand it over in game.'],
     ['.backdoor', 'backdoor', 'The back room', 'Play against other patrons: dice, cards, Hold’em, board games. The house only takes its cut.'],
     ['[data-tonight]', 'tonight', 'How you stand', 'What you have won or lost tonight, and at this table. It changes with every round.'],
-    ['.tipcard', 'tip', 'Tip the dealer', 'Tip Brannoc 50 or more and luck leans your way for two minutes.'],
+    ['.tipcard', 'tip', 'Tip the dealer', 'Tip Brannoc 50 or more and luck leans your way for a minute.'],
     ['[data-lastout]', 'lastout', 'The last 20', 'What this table has thrown, dealt or spun lately, newest first.'],
     ['.hoard', 'hoard', 'The Dragon’s Hoard', 'A dragon on all five reels takes the whole hoard. Every spin feeds it.'],
     ['.sidebets', 'sidebets', 'Side bets', 'A pair, or a poker hand with Brannoc’s up card. They pay the moment the cards are dealt.'],

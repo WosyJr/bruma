@@ -118,10 +118,12 @@
   var Broke = (function () {
     var open = false;
     function csrf() { var c = document.querySelector('input[name=_csrf]'); return c ? c.value : ''; }
-    function show() {
-      if (open || document.getElementById('broke') || !document.querySelector('#inn[data-game]')) return;
+    function show(again) {
+      again = again === true;
+      if (open || document.getElementById('broke')) { var f = document.querySelector('#broke input[name=amount]'); if (f) f.focus(); return; }
+      if (!again && !document.querySelector('#inn[data-game]')) return;
       open = true;
-      var tries = 0;
+      var tries = again ? 1 : 0;
       var wrap = document.createElement('div');
       wrap.id = 'broke'; wrap.className = 'broke';
       wrap.innerHTML = '<div class="brokebox" role="alertdialog" aria-modal="true" aria-labelledby="brokehead">' +
@@ -154,11 +156,65 @@
       document.addEventListener('keydown', key, true);
       if (window.InnSound) window.InnSound.lose();
       var inp = wrap.querySelector('input[name=amount]'); if (inp) setTimeout(function () { inp.focus(); }, 50);
+      var form = wrap.querySelector('.brokeform');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = form.querySelector('button'); btn.disabled = true;
+        fetch('/inn/more', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(new FormData(form)).toString() })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j.error) { say.textContent = j.error; btn.disabled = false; return; }
+            tries = 1;
+            form.outerHTML = '<p class="brokesent" data-brokesent>✓ Your request is with the innkeeper.</p><button type="button" class="btn ghost small" data-brokedone>Back to the table</button>';
+            say.textContent = j.text || 'Hand the coin over in game and your purse is filled.';
+            var done = wrap.querySelector('[data-brokedone]'); if (done) { done.addEventListener('click', close); done.focus(); }
+          })
+          .catch(function () { say.textContent = 'The innkeeper did not hear you. Try again.'; btn.disabled = false; });
+      });
     }
     function check(n) { if (Number(n) === 0) show(); }
     return { show: show, check: check };
   })();
   window.InnBroke = Broke;
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href="/inn#purse"]');
+    if (!a || !document.querySelector('#inn[data-game], #room')) return;
+    e.preventDefault();
+    Broke.show(true);
+  });
+  document.querySelectorAll('form[data-tipform]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      var sure = form.querySelector('input[name=sure]');
+      if (sure && sure.value === '1') return;
+      e.preventDefault();
+      var other = form.querySelector('input[name=amount]:not([type=hidden])');
+      var raw = e.submitter && e.submitter.name === 'amount' ? e.submitter.value : (other ? other.value : '');
+      var amt = Math.floor(Number(String(raw).replace(/[^\d]/g, '')) || 0);
+      var card = form.closest('.tipcard') || form.parentNode;
+      var old = card.querySelector('.tipask'); if (old) old.remove();
+      var box = document.createElement('div');
+      box.className = 'tipask'; box.setAttribute('role', 'group'); box.setAttribute('aria-label', 'Confirm the tip');
+      if (amt < 50) {
+        box.innerHTML = '<p>Brannoc takes tips of 50 or more.</p><div class="btnrow"><button type="button" class="btn ghost small" data-tipno>All right</button></div>';
+      } else {
+        box.innerHTML = '<p><b>Tip Brannoc ' + fmt(amt) + '?</b> It goes to the house and can’t be taken back.</p><div class="btnrow"><button type="button" class="btn go small" data-tipyes>Yes, tip ' + fmt(amt) + '</button><button type="button" class="btn ghost small" data-tipno>No, keep it</button></div>';
+      }
+      form.hidden = true;
+      form.insertAdjacentElement('afterend', box);
+      var yes = box.querySelector('[data-tipyes]'), no = box.querySelector('[data-tipno]');
+      no.addEventListener('click', function () { box.remove(); form.hidden = false; });
+      if (yes) {
+        yes.addEventListener('click', function () {
+          yes.disabled = true;
+          if (other) other.value = String(amt);
+          form.querySelectorAll('button[name=amount]').forEach(function (b) { b.removeAttribute('name'); });
+          sure.value = '1';
+          form.submit();
+        });
+        yes.focus();
+      } else no.focus();
+    });
+  });
   (function () {
     var pm = document.querySelector('[data-purse]');
     if (!pm || String(pm.textContent).replace(/[^\d]/g, '') !== '0') return;

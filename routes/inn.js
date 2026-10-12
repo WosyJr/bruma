@@ -65,6 +65,18 @@ module.exports = function (app, { checkCsrf, need }) {
     req.session.flash = { text: I.septims(r.amount) + ' is set aside. The innkeeper will pay you in game.' };
   }));
 
+  app.post('/inn/more', checkCsrf, (req, res, next) => {
+    if (!/json/.test(String(req.get('accept') || ''))) return next();
+    res.setHeader('Cache-Control', 'no-store');
+    const p = I.current(req);
+    if (!I.seated(p)) return res.status(403).json({ error: 'Ask for a seat at the door first.' });
+    try {
+      if (limited('innmore|' + p.id, 6, 60 * 60 * 1000)) throw new Error('You have asked a lot this hour. Wait for the innkeeper.');
+      I.askMore(p.id, (req.body || {}).amount, (req.body || {}).note);
+      res.json({ ok: true, text: 'The innkeeper knows you want more coin. Hand it over in game and your purse is filled.' });
+    } catch (e) { res.status(400).json({ error: e.message }); }
+  });
+
   app.post('/inn/more', checkCsrf, (req, res) => mine(req, res, p => {
     if (limited('innmore|' + p.id, 6, 60 * 60 * 1000)) throw new Error('You have asked a lot this hour. Wait for the innkeeper.');
     I.askMore(p.id, (req.body || {}).amount, (req.body || {}).note);
@@ -85,12 +97,17 @@ module.exports = function (app, { checkCsrf, need }) {
   });
 
   app.post('/inn/tip', checkCsrf, (req, res) => {
-    const b = req.body || {};
+    const b = Object.assign({}, req.body || {});
+    if (Array.isArray(b.amount)) b.amount = b.amount.filter(x => String(x).trim()).pop() || '';
     const back = I.IDS.includes(String(b.back || '')) ? '/inn/' + b.back : '/inn';
     const p = I.current(req);
     if (!I.seated(p)) { req.session.flash = { err: true, text: 'Ask for a seat at the door first.' }; return res.redirect('/inn'); }
+    if (String(b.sure || '') !== '1') {
+      const a = Math.floor(Number(String(b.amount || '').replace(/[^\d]/g, '')) || 0);
+      return res.page({ title: 'Tip Brannoc', body: IV.tipConfirm({ csrf: req.session.csrf, amount: a, back: I.IDS.includes(String(b.back || '')) ? b.back : '', purse: p.purse }) });
+    }
     if (limited('inntip|' + p.id, 30, 60 * 60 * 1000)) { req.session.flash = { err: true, text: 'Brannoc waves you off. “Enough, enough.”' }; return res.redirect(back); }
-    try { const t = I.tip(p.id, b.amount); req.session.flash = { text: 'You tip ' + I.septims(t.amount) + '. ' + t.say + ' Luck leans your way for two minutes on stakes up to ' + I.septims(t.favour.cap) + '.' }; }
+    try { const t = I.tip(p.id, b.amount); req.session.flash = { text: 'You tip ' + I.septims(t.amount) + '. ' + t.say + ' Luck leans your way for a minute on stakes up to ' + I.septims(t.favour.cap) + '.' }; }
     catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect(back);
   });
