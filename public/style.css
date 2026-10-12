@@ -1976,3 +1976,62 @@ html{scroll-behavior:smooth}
 .livetoast .flash{margin:0}
 .livetoast.out{opacity:0;transform:translate(-50%,10px)}
 @keyframes toastin{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+.racefelt{gap:12px}
+.rplayers{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;width:100%}
+.rplayer{display:flex;gap:8px;align-items:center;padding:7px 12px;border-radius:999px;background:rgba(0,0,0,.25);color:#FFF6E2;border:1px solid transparent}
+.rplayer .hint{color:#CFC2A4;margin:0}
+.rplayer.turn{border-color:#F4C774;background:rgba(244,199,116,.12)}
+.rplayer.winner{border-color:#A7C27A}
+.rplayer.out{opacity:.45}
+.rdot{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid #1E140C;flex:none}
+.raceplay{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px;width:100%;align-items:start}
+.racewrap{min-width:0}
+.raceboard{width:100%;height:auto;display:block}
+.raceboard .rbg{fill:#3B2617;stroke:#8C6A2F;stroke-width:3}
+.raceboard .rsq{stroke:#1E140C;stroke-width:1}
+.raceboard .rsafe{opacity:.8;stroke:#1E140C}
+.raceboard .rlabel{fill:#FFF6E2;font:600 9px var(--mono);text-anchor:middle;letter-spacing:.08em;text-transform:uppercase}
+.raceboard .rpc text{fill:#1E140C;font:700 12px var(--mono);text-anchor:middle;pointer-events:none}
+.raceboard .rpc{transition:transform .3s}
+.raceboard .rpc.hot circle{stroke:#FFF6E2;stroke-width:3}
+.raceboard .rpc.last circle{filter:drop-shadow(0 0 6px rgba(244,199,116,.9))}
+.raceside{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.raceside .say{max-width:none}
+.rdeck{display:flex;gap:10px;justify-content:center}
+.rcard{position:relative;width:110px;height:150px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px;background:linear-gradient(160deg,#FFFDF6,#EFE6D2);border:1px solid #BFAF8E;color:#2A1A0C;box-shadow:0 6px 14px rgba(0,0,0,.4);text-align:center}
+.rcard i{font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;font-style:normal}
+.rcard b{font:600 40px/1 var(--serif)}
+.rcard b svg{width:46px;height:46px;fill:#9A2525}
+.rcard small{font-size:9.5px;line-height:1.25;color:#5A4A35}
+.rcard.back{background:repeating-linear-gradient(45deg,#2B3D57 0 6px,#22324A 6px 12px);border-color:#14203A;color:#E8C98A;justify-content:center}
+.rcard.back small{color:#CFC2A4;margin-top:8px}
+.rcard.c-dragon{background:linear-gradient(160deg,#FFE9DF,#F2C7B5)}
+.rcard.c-swap{background:linear-gradient(160deg,#EDE6FF,#D6CBF2)}
+.rcard.c-b4,.rcard.c-10{background:linear-gradient(160deg,#E6F0FF,#C9DAF2)}
+.rcard.live{animation:rflip .45s ease-out;box-shadow:0 0 0 3px #F4C774,0 8px 18px rgba(0,0,0,.5)}
+.rcard.spent{opacity:.65}
+.rcard.ghost{background:transparent;border:1px dashed rgba(228,214,184,.35);box-shadow:none}
+.rcard.mini{width:60px;height:84px;padding:4px}.rcard.mini b{font-size:20px}.rcard.mini b svg{width:24px;height:24px}.rcard.mini small{display:none}.rcard.mini i{font-size:8px}
+.racecards{display:flex;gap:6px}
+@keyframes rflip{from{transform:rotateY(90deg)}to{transform:none}}
+.rform{width:100%}
+.roptions{display:flex;flex-direction:column;gap:6px}
+.roptions .btn{justify-content:flex-start;text-align:left;display:flex;gap:8px;align-items:center;white-space:normal}
+@media (max-width:860px){.raceplay{grid-template-columns:1fr}}
+.dwrap{width:min(420px,100%)}
+.draughts{width:100%;height:auto;display:block;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.45)}
+.draughts.mini{width:110px;box-shadow:none}
+.draughts .lt{fill:#E9DFC8}
+.draughts .dk{fill:#6B4A2E}
+.draughts .dk.lastsq{fill:#8A6438}
+.draughts .dpc circle{stroke-width:2}
+.draughts .pl circle{fill:#F7EEDC;stroke:#BFAF8E}
+.draughts .pd circle{fill:#2A1E14;stroke:#8C6A2F}
+.draughts .pl .ring{fill:none;stroke:#CDBB97}
+.draughts .pd .ring{fill:none;stroke:#5C4630}
+.draughts .crown{fill:#E3B341;stroke:#7A5A1A;stroke-width:1}
+.draughts .dhit{fill:transparent;cursor:pointer}
+.draughts .dhit.src{fill:rgba(244,199,116,.12)}
+.draughts .dhit.picked{fill:rgba(244,199,116,.35)}
+.draughts .dhit.tgt{fill:rgba(167,194,122,.45)}
+@media (prefers-reduced-motion:reduce){.rcard.live{animation:none}}

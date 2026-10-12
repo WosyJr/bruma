@@ -63,7 +63,7 @@ module.exports = function (app, { checkCsrf, wrap, back, need, needAny }) {
     </article>`;
     };
 
-    const body = `${loginCard(req, g.id)}${u.member ? `<section class="card memberbar"><span>You enter as <b>${esc(u.member.code)} ${esc(u.member.rankName)}</b> of ${esc(g.name)}.</span><span class="hint">${mayAdmit ? 'You may admit and promote, post contracts and keep the map.' : (mayKeep ? 'You may post contracts and keep the hall’s map.' : 'You see what the hall shows its members: the charter, the ladder, the open contracts and every pin on the hall’s map.')}</span></section>` : ''}
+    const body = `
 <section class="card hallhead">
   <div class="eyebrow">Chartered under the Guilds Act</div>
   <h2 style="margin:4px 0 8px">The Guilds of Bruma</h2>

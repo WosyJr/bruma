@@ -227,7 +227,7 @@ module.exports = function (app, { checkCsrf, need }) {
     res.json(stateOf(req, r));
   });
 
-  const ROOMACTS = ['join', 'start', 'leave', 'rebuy', 'back', 'say', 'throw', 'bank', 'bid', 'liar', 'fold', 'check', 'call', 'raise', 'allin', 'bet', 'insure', 'noinsure', 'hit', 'stand', 'double', 'split', 'surrender', 'place', 'move', 'take', 'pick'];
+  const ROOMACTS = ['join', 'start', 'leave', 'rebuy', 'back', 'say', 'throw', 'bank', 'bid', 'liar', 'fold', 'check', 'call', 'raise', 'allin', 'bet', 'insure', 'noinsure', 'hit', 'stand', 'double', 'split', 'surrender', 'place', 'move', 'take', 'pick', 'draw', 'choose'];
   app.post('/inn/room/:id/:what', checkCsrf, (req, res, next) => {
     const id = String(req.params.id);
     const what = String(req.params.what);
@@ -246,7 +246,7 @@ module.exports = function (app, { checkCsrf, need }) {
       else if (what === 'rebuy') PvP.rebuy(id, p.id);
       else if (what === 'back') PvP.back(id, p.id);
       else if (what === 'say') { if (limited('innsay|' + p.id, 20, 60 * 1000)) throw new Error('Slow down; let the others get a word in.'); PvP.say(id, p.id, b.text); }
-      else PvP.act(id, p.id, what, { q: b.q, f: b.f, to: b.to, from: b.from, at: b.at, side: b.side, choice: b.choice, amount: b.amount });
+      else PvP.act(id, p.id, what, { q: b.q, f: b.f, to: b.to, from: b.from, at: b.at, side: b.side, choice: b.choice, amount: b.amount, k: b.k });
     } catch (e) { return fail(400, e.message); }
     if (what === 'leave' && !json) return res.redirect('/inn/back');
     if (!json) return res.redirect(back);

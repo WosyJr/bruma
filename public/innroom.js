@@ -157,6 +157,7 @@
       });
     });
     morrisWire();
+    draughtsWire();
     var num = tbl.querySelector('[data-raise]'), sl = tbl.querySelector('[data-raiseslide]');
     if (num && sl) {
       sl.addEventListener('input', function () { num.value = sl.value; });
@@ -196,6 +197,38 @@
     w.querySelectorAll('[data-pt]').forEach(function (g) {
       g.addEventListener('click', function () { pick(Number(g.getAttribute('data-pt'))); });
       g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(Number(g.getAttribute('data-pt'))); } });
+    });
+    paint();
+  }
+
+  var dsel = -1;
+  function draughtsWire() {
+    var w = tbl.querySelector('[data-draughts]');
+    if (!w || w.getAttribute('data-turn') !== '1') return;
+    var legal = []; try { legal = JSON.parse(w.getAttribute('data-legal')); } catch (e) {}
+    var chain = Number(w.getAttribute('data-chain'));
+    if (chain >= 0) dsel = chain;
+    var form = tbl.querySelector('form.dform');
+    if (!form) return;
+    var paint = function () {
+      w.querySelectorAll('[data-sq]').forEach(function (h) {
+        var i = Number(h.getAttribute('data-sq'));
+        var ok = dsel >= 0 && legal.some(function (m) { return m[0] === dsel && m[1] === i; });
+        var can = legal.some(function (m) { return m[0] === i; });
+        h.classList.toggle('tgt', ok);
+        h.classList.toggle('src', can);
+        h.classList.toggle('picked', i === dsel);
+      });
+    };
+    w.querySelectorAll('[data-sq]').forEach(function (h) {
+      h.addEventListener('click', function () {
+        var i = Number(h.getAttribute('data-sq'));
+        if (legal.some(function (m) { return m[0] === i; }) && chain < 0) { dsel = dsel === i ? -1 : i; play('tick'); paint(); return; }
+        if (dsel >= 0 && legal.some(function (m) { return m[0] === dsel && m[1] === i; })) {
+          form.querySelector('[data-dfrom]').value = dsel; form.querySelector('[data-dto]').value = i;
+          dsel = -1; play('chip'); send(form, form.getAttribute('action'));
+        }
+      });
     });
     paint();
   }
