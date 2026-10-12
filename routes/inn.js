@@ -29,6 +29,13 @@ module.exports = function (app, { checkCsrf, need }) {
   };
   const learned = (req, game) => !!(req.session.learned && req.session.learned[game]);
 
+  app.use('/inn', (req, res, next) => {
+    const orig = res.page.bind(res);
+    res.page = (opts, code) => orig(Object.assign({}, opts, { body: IV.themed(opts.body) }), code);
+    next();
+  });
+
+
   function viewOf(game, d) {
     const t = I.table(d.patron ? d.patron.id : '', game);
     if (game === 'cards') return Object.assign(J.view(t, I.rulesOf(d.house), d.patron ? d.patron.purse : 0), { sides: t.round && t.round.sides || null, sideBets: t.sideBets || {} });
@@ -104,7 +111,7 @@ module.exports = function (app, { checkCsrf, need }) {
     if (!I.seated(p)) { req.session.flash = { err: true, text: 'Ask for a seat at the door first.' }; return res.redirect('/inn'); }
     if (String(b.sure || '') !== '1') {
       const a = Math.floor(Number(String(b.amount || '').replace(/[^\d]/g, '')) || 0);
-      return res.page({ title: 'Tip Brannoc', body: IV.tipConfirm({ csrf: req.session.csrf, amount: a, back: I.IDS.includes(String(b.back || '')) ? b.back : '', purse: p.purse }) });
+      return res.page({ title: 'Tip Brannoc', body: IV.tipConfirm({ csrf: req.session.csrf, amount: a, back: I.IDS.includes(String(b.back || '')) ? b.back : '', purse: p.purse, cap: I.rankOf(p.id).cap }) });
     }
     if (limited('inntip|' + p.id, 30, 60 * 60 * 1000)) { req.session.flash = { err: true, text: 'Brannoc waves you off. “Enough, enough.”' }; return res.redirect(back); }
     try { const t = I.tip(p.id, b.amount); req.session.flash = { text: 'You tip ' + I.septims(t.amount) + '. ' + t.say + ' Luck leans your way for a minute on stakes up to ' + I.septims(t.favour.cap) + '.' }; }
@@ -123,6 +130,43 @@ module.exports = function (app, { checkCsrf, need }) {
     res.setHeader('Cache-Control', 'no-store');
     const p = I.current(req);
     res.json({ status: p ? p.status : 'none' });
+  });
+
+  app.post('/inn/ledger/tourney', checkCsrf, need('inn'), (req, res) => {
+    const b = req.body || {};
+    try {
+      if (b.act === 'cancel') { I.tourneyCancel(req.user); req.session.flash = { text: 'The tournament is called off and every buy-in handed back.' }; }
+      else { const c = I.tourneyStart(b, req.user); req.session.flash = { text: 'Tournament ' + c.no + ' is open at ' + I.GAME[c.game].name + ': buy-in ' + I.septims(c.buyin) + ', ' + c.mins + ' minutes on the clock.' }; }
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/inn/ledger#tourneycard');
+  });
+
+  app.post('/inn/ledger/theme', checkCsrf, need('inn'), (req, res) => {
+    try {
+      const t = I.setTheme((req.body || {}).theme, req.user);
+      req.session.flash = { text: t.id === 'none' ? 'The hall wears its everyday look again.' : 'The hall is dressed for the ' + t.name + '.' };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/inn/ledger#dresscard');
+  });
+
+  app.post('/inn/tourney/join', checkCsrf, (req, res) => {
+    const b = req.body || {};
+    const back = I.TOURNEY_GAMES.includes(String(b.back || '')) ? '/inn/' + b.back : '/inn';
+    const p = I.current(req);
+    try {
+      const c = I.tourneyJoin(p ? p.id : '');
+      req.session.flash = { text: 'You are in. ' + I.septims(c.buyin) + ' goes to the pot; your winnings at ' + I.GAME[c.game].short + ' count until time is called.' };
+      return res.redirect('/inn/' + c.game);
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect(back);
+  });
+
+  app.get('/inn/tourney.json', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const d = base(req);
+    const game = String(req.query.game || '') || undefined;
+    const t = I.tourneyView(d.patron ? d.patron.id : '');
+    res.json({ html: IV.tourneyBox(d, game), endAt: t.cur ? t.cur.endAt : 0 });
   });
 
   app.get('/inn/bard', (req, res) => { res.setHeader('Cache-Control', 'no-store'); res.type('html').send(IV.bardWindow()); });
@@ -461,6 +505,7 @@ module.exports = function (app, { checkCsrf, need }) {
     }
     if (game === 'slots') { reply.grid = d.view.last.grid; reply.won = d.view.last.won; reply.jackpot = d.view.jackpot; }
     if (game === 'plinko') { const l = d.view.last; reply.drop = { path: l.path, slot: l.slot, mult: l.mult, returned: l.returned, staked: l.staked, risk: l.risk }; }
+    if (game === 'scratch') { const l = d.view.last; reply.ticket = { seals: l.seals, mult: l.mult, returned: l.returned, staked: l.staked }; reply.ticketHtml = GV.sealTicket(l, true); }
     if (game === 'wheel') reply.spin = out.spin;
     if (game === 'six') reply.slot = out.slot;
     if (game === 'punto' && out.steps) {

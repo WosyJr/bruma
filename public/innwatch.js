@@ -68,7 +68,12 @@
     ['form[data-exotic]', 'exotic', 'Bet the order', 'Name the first two (exacta) or first three (trifecta) in order for much bigger prices.'],
     ['.propsrow', 'props', 'Side bets', 'Bet how long the bout lasts, or how it ends: by the blade, a spell or an arrow.'],
     ['canvas[data-ring]', 'ring', 'The ring', 'The bout plays out here blow by blow. Everyone in the hall sees the same fight.'],
+    ['[data-scratch]', 'seals', 'The Three Seals', 'Scratch the wax with your pointer, or tap a seal. Three alike pays, up to the Dragon at 100 times.'],
+    ['[data-tourney]', 'tourney', 'A tournament', 'Join for the buy-in. Your winnings at that table count until time is called, and the top three split the pot.'],
+    ['[data-rankcard]', 'rank', 'Your standing', 'Every septim you stake counts toward Copper, Silver, Gold and Dragon. Higher standing stretches Brannoc’s favour.'],
     ['.coincard', 'coin', 'Coin in hand', 'What the keepers should be holding in game, what is owed to patrons, and what is the house’s own.'],
+    ['#tourneycard', 'tourneycard', 'A tournament', 'Open a timed contest at the Lever, the Avalanche or the Seals. Buy-ins make the pot; the house keeps its cut.'],
+    ['#dresscard', 'dress', 'Dressing the hall', 'Dress every inn page for a festival: New Life, Harvest’s End, the Witches’ Festival or Mid Year.'],
     ['#hallcard', 'hallcard', 'The hall tonight', 'Nail up tonight’s notice, start a happy hour, and set the bard’s songs.'],
     ['.livefilter', 'livefilter', 'One table at a time', 'Pick a table to see only the patrons playing it.'],
     ['[data-thumbs]', 'thumbs', 'House settings', 'Open this to lean on a table or a patron. It folds itself away every time the page loads.']

@@ -35,6 +35,141 @@
   }
   function toneOf() { var s = tbl.querySelector('[data-say]'); return s ? (s.classList.contains('good') ? 'good' : (s.classList.contains('bad') ? 'bad' : '')) : ''; }
 
+  (function () {
+    if (!document.querySelector('[data-tourney]')) return;
+    function tick() {
+      var b = document.querySelector('[data-tourney]');
+      if (!b) return;
+      var end = Number(b.getAttribute('data-endat'));
+      var el = b.querySelector('[data-tytime]');
+      if (!el) return;
+      var ms = end - Date.now();
+      el.textContent = ms <= 0 ? 'time is called' : Math.floor(ms / 60000) + ':' + String(Math.floor(ms % 60000 / 1000)).padStart(2, '0') + ' left';
+    }
+    setInterval(tick, 1000);
+    tick();
+    setInterval(function () {
+      if (document.hidden) return;
+      fetch('/inn/tourney.json?game=' + encodeURIComponent(game || ''), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          var b = document.querySelector('[data-tourney]');
+          if (!b) return;
+          if (!j.html) { b.remove(); return; }
+          var t = document.createElement('div');
+          t.innerHTML = j.html;
+          var nb = t.firstElementChild;
+          if (nb && nb.innerHTML !== b.innerHTML) b.replaceWith(nb);
+        }).catch(function () {});
+    }, 8000);
+  })();
+
+  if (game === 'scratch') {
+    var skBusy = false;
+    var waxEmblem = function (ctx, w) {
+      var cx = w / 2, cy = w / 2;
+      var g = ctx.createRadialGradient(cx - 14, cy - 16, 6, cx, cy, w * 0.52);
+      g.addColorStop(0, '#B8433A'); g.addColorStop(0.55, '#8E2F24'); g.addColorStop(1, '#5E1C14');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      for (var i = 0; i <= 44; i++) {
+        var a = i / 44 * Math.PI * 2;
+        var r = w * 0.46 + Math.sin(a * 9) * 2.4 + Math.sin(a * 4 + 1) * 1.6;
+        var x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, w * 0.33, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,220,190,.28)';
+      ctx.beginPath(); ctx.arc(cx, cy, w * 0.37, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(0,0,0,.3)';
+      ctx.font = '600 ' + Math.round(w * 0.3) + 'px Georgia, serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('ᛟ', cx, cy + 1);
+      ctx.fillStyle = 'rgba(255,235,210,.25)';
+      ctx.beginPath(); ctx.ellipse(cx - 12, cy - 18, 16, 8, -0.6, 0, Math.PI * 2); ctx.fill();
+    };
+    var setupWax = function (cv, onDone) {
+      var w = cv.width;
+      var ctx = cv.getContext('2d');
+      waxEmblem(ctx, w);
+      var gone = false, strokes = 0, lastChip = 0;
+      var reveal = function () {
+        if (gone) return;
+        gone = true;
+        cv.classList.add('gone');
+        Snd.card();
+        setTimeout(function () { cv.remove(); onDone(); }, reduce ? 0 : 320);
+      };
+      var ratio = function () {
+        var d = ctx.getImageData(0, 0, w, w).data;
+        var clear = 0, total = 0;
+        for (var i = 3; i < d.length; i += 32) { total++; if (!d[i]) clear++; }
+        return clear / total;
+      };
+      var down = false;
+      var rub = function (e) {
+        if (gone) return;
+        var r = cv.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width * w, y = (e.clientY - r.top) / r.height * w;
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath(); ctx.arc(x, y, w * 0.12, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        strokes++;
+        if (Date.now() - lastChip > 160) { lastChip = Date.now(); Snd.chip(); }
+        if (strokes > 6 && strokes % 4 === 0 && ratio() > 0.45) reveal();
+      };
+      if (reduce) { cv.addEventListener('click', reveal); cv.title = 'Break the seal'; return { reveal: reveal }; }
+      cv.addEventListener('pointerdown', function (e) { down = true; try { cv.setPointerCapture && cv.setPointerCapture(e.pointerId); } catch (x) {} rub(e); });
+      cv.addEventListener('pointerup', function () { down = false; if (!gone && strokes > 10 && ratio() > 0.4) reveal(); });
+      cv.addEventListener('pointermove', function (e) { if (down || e.buttons || e.pointerType === 'touch') rub(e); });
+      cv.addEventListener('click', function () { strokes += 2; if (strokes > 24) reveal(); });
+      return { reveal: reveal };
+    };
+    tbl.addEventListener('submit', function (e) {
+      var form = e.target.closest('form[data-play]');
+      if (!form) return;
+      e.preventDefault();
+      if (skBusy) return;
+      skBusy = true;
+      Snd.click();
+      var btn = form.querySelector('button[type=submit]');
+      if (btn) btn.disabled = true;
+      send(form, e.submitter).then(function (r) {
+        if (!r.ok) { skBusy = false; if (btn) btn.disabled = false; sayIn(tbl, r.j.error || 'The innkeeper did not hear you.', 'bad'); return; }
+        var j = r.j;
+        var box = tbl.querySelector('[data-tkbox]');
+        box.innerHTML = j.ticketHtml;
+        sayIn(tbl, 'The ink is dry. Scratch the wax away.', '');
+        var left = 3;
+        var finish = function () {
+          var t = j.ticket;
+          var tone = t.mult > 1 ? 'good' : (t.mult === 1 ? '' : 'bad');
+          var foot = box.querySelector('[data-tkfoot]');
+          var name = t.seals[0].name;
+          if (foot) foot.textContent = t.mult ? 'Three of ' + name + ': the ticket pays ×' + t.mult + ', ' + fmt(t.returned) + ' back.' : 'No three alike. The ticket keeps the stake.';
+          sayIn(tbl, t.mult > 1 ? 'Three of ' + name + '! ×' + t.mult + ' pays ' + fmt(t.returned) + '.' : (t.mult === 1 ? 'Three Septims: the stake comes back to you.' : 'The wax hid nothing tonight.'), tone);
+          setPurse(j.purse);
+          lastout(j);
+          if (j.happy) sayIn(tbl, tbl.querySelector('[data-say]').textContent + ' Happy hour adds ' + fmt(j.happy) + '.', tone);
+          if (t.mult >= 20) { Snd.big(); flash('good'); if (UI.burst) UI.burst(); }
+          else if (t.mult > 1) { Snd.win(); flash('good'); }
+          else if (t.mult === 1) Snd.chip();
+          else { Snd.lose(); flash('bad'); }
+          skBusy = false;
+          if (btn) btn.disabled = false;
+        };
+        var waxes = [];
+        box.querySelectorAll('[data-wax]').forEach(function (cv) {
+          waxes.push(setupWax(cv, function () { left--; if (!left) finish(); }));
+        });
+        var all = box.querySelector('[data-revealall]');
+        if (all) all.addEventListener('click', function () { waxes.forEach(function (x) { x.reveal(); }); });
+      }).catch(function () { skBusy = false; if (btn) btn.disabled = false; sayIn(tbl, 'The innkeeper did not hear you. Try again.', 'bad'); });
+    });
+  }
+
   if (game === 'slots') {
     var busy = false;
     var glyphOf = function (id) { var f = tbl.querySelector('[data-slots]'); var g = {}; try { g = JSON.parse(f.getAttribute('data-glyph')); } catch (e) {} return g[id] || ''; };
