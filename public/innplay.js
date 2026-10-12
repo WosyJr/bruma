@@ -251,6 +251,7 @@
       if (k) putInputs(el, k);
       if (name === 'list' && !reduce) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
       if (name === 'stage') blowsShown = -1;
+      if (name === 'ctl') { var xf = el.querySelector('form[data-exotic]'); if (xf) exPrice(xf); }
     };
     var apply = function (j) {
       if (!j || !j.meta) return;
@@ -317,11 +318,24 @@
       }).catch(function () { form.dataset.sending = ''; if (sub) sub.disabled = false; });
     });
 
+    var exPrice = function (f) {
+      var kind = (f.querySelector('input[name=kind]:checked') || {}).value || 'exacta';
+      var third = f.querySelector('[data-third]'); if (third) third.hidden = kind !== 'trifecta';
+      var ks = ['e1', 'e2', 'e3'].slice(0, kind === 'exacta' ? 2 : 3).map(function (n) { return f.querySelector('[name=' + n + ']').value; });
+      var map = {}; try { map = JSON.parse(f.getAttribute(kind === 'exacta' ? 'data-exacta' : 'data-trifecta')); } catch (e) {}
+      var dup = ks.some(function (v, i) { return ks.indexOf(v) !== i; });
+      var out = f.querySelector('[data-exprice]'); if (out) out.textContent = dup ? 'pick different horses' : (map[ks.join('-')] || '–');
+    };
+    tbl.addEventListener('change', function (e) { var f = e.target.closest('form[data-exotic]'); if (f) exPrice(f); });
     var blowsShown = -1;
     var blowText = function (ev, names) {
       var A = names[ev.by], D = names[1 - ev.by];
       if (ev.kind === 'dodge') return D + ' slips ' + A + '’s blow.';
       if (ev.kind === 'block') return D + ' blocks; ' + ev.dmg + ' gets through.';
+      var EL = { fire: 'fire', frost: 'frost', shock: 'lightning' };
+      if (ev.move === 'arrow') return ev.kind === 'power' ? A + '’s arrow finds a gap in ' + D + '’s guard: ' + ev.dmg + '!' : A + ' looses an arrow into ' + D + ' for ' + ev.dmg + '.';
+      if (ev.move === 'spell') return A + (ev.kind === 'power' ? ' unleashes a storm of ' : ' hurls ') + (EL[ev.el] || 'fire') + ' at ' + D + ': ' + ev.dmg + (ev.kind === 'power' ? '!' : '.');
+      if (ev.move === 'bash') return A + ' bashes ' + D + ' with a shield for ' + ev.dmg + '.';
       if (ev.kind === 'power') return A + ' lands a crushing blow on ' + D + ': ' + ev.dmg + '!';
       return A + ' strikes ' + D + ' for ' + ev.dmg + '.';
     };
@@ -378,6 +392,10 @@
         }
       }
       if (game === 'arena') {
+        var ring = tbl.querySelector('[data-ring]');
+        if (ring && window.InnArena && ring.offsetParent !== null) {
+          try { window.InnArena.draw(ring, m, n, reduce ? null : function (ev, fin) { if (fin) { Snd.big(); return; } if (ev.kind === 'dodge') Snd.tick(); else if (ev.kind === 'block') Snd.chip(); else if (ev.move === 'spell') Snd.ball(); else if (ev.kind === 'power') Snd.dice(); else Snd.card(); }); } catch (e) {}
+        }
         var ac = tbl.querySelector('[data-aclock]'), list = tbl.querySelector('[data-blows]');
         if (m.phase === 'bet') {
           if (ac) ac.textContent = 'Bout ' + m.no + ' in ' + clock(m.startAt - n);
@@ -394,7 +412,6 @@
             list.insertBefore(li, list.firstChild);
             blowsShown++;
             if (want - blowsShown < 1 && m.phase !== 'done') {
-              if (ev.kind === 'power') Snd.dice(); else if (ev.kind !== 'dodge') Snd.card();
               var hitCard = tbl.querySelector('.fighter.f' + (1 - ev.by));
               if (hitCard && !reduce && ev.kind !== 'dodge') { hitCard.classList.remove('struck'); void hitCard.offsetWidth; hitCard.classList.add('struck'); }
             }

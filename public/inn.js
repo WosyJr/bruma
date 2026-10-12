@@ -136,8 +136,11 @@
       if (from === to) { el.textContent = fmt(to); return; }
       el.classList.remove('pup', 'pdown'); void el.offsetWidth; el.classList.add(to > from ? 'pup' : 'pdown');
       if (reduce) { el.textContent = fmt(to); return; }
-      var t0 = null, dur = 650;
+      var t0 = null, dur = 650, token = (el.__pt || 0) + 1;
+      el.__pt = token;
+      setTimeout(function () { if (el.__pt === token) el.textContent = fmt(to); }, dur + 120);
       (function step(ts) {
+        if (el.__pt !== token) return;
         if (!t0) t0 = ts;
         var k = Math.min(1, (ts - t0) / dur), e = 1 - Math.pow(1 - k, 3);
         el.textContent = fmt(Math.round(from + (to - from) * e));
@@ -229,7 +232,7 @@
 
   tbl.addEventListener('click', function (e) {
     var c = e.target.closest('[data-chip]');
-    if (c) { var inp = tbl.querySelector('[data-stake]'); if (inp) { inp.value = c.getAttribute('data-chip'); inp.focus(); } return; }
+    if (c) { var inp = (c.closest('form') || tbl).querySelector('[data-stake]') || tbl.querySelector('[data-stake]'); if (inp) { inp.value = c.getAttribute('data-chip'); inp.focus(); } return; }
     if (game === 'keno' && !busy) { kenoClick(e); return; }
     if (!CLOTH || busy) return;
     var cv = e.target.closest('[data-chipval]');
@@ -286,6 +289,7 @@
       if (j.lastout) { var lo = document.querySelector('[data-lastout]'); if (lo) lo.innerHTML = j.lastout; }
       if (game === 'hazard' || game === 'cage') shake();
       if (game === 'wheel') { var w = tbl.querySelector('.wnum'); if (w && !reduce) w.classList.add('pop'); }
+      if (j.happy) { var hs = tbl.querySelector('[data-say]'); if (hs) hs.textContent += ' Happy hour adds ' + fmt(j.happy) + '.'; }
       result();
       busy = false;
       focusFirst();

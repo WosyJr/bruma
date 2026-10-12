@@ -19,7 +19,17 @@
     });
   }
   function applyFilter() {
-    document.querySelectorAll('[data-lf]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-lf') === filter); });
+    var csrf = document.querySelector('[data-csrf]');
+  document.addEventListener('change', function (e) {
+    var sel = e.target.closest && e.target.closest('select[data-tilt]');
+    if (!sel || !csrf) return;
+    var body = new URLSearchParams({ _csrf: csrf.value, kind: sel.getAttribute('data-tilt'), key: sel.getAttribute('data-key'), level: sel.value });
+    sel.classList.remove('saved', 'failed');
+    fetch('/inn/ledger/tilt', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
+      .then(function (r) { sel.classList.add(r.ok ? 'saved' : 'failed'); var card = sel.closest('[data-live]'); if (card) card.classList.toggle('tilted', sel.value !== '0'); })
+      .catch(function () { sel.classList.add('failed'); });
+  });
+  document.querySelectorAll('[data-lf]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-lf') === filter); });
     tables.querySelectorAll('[data-live]').forEach(function (c) { c.hidden = !!filter && c.getAttribute('data-game') !== filter; });
   }
   function flash(c) { c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump'); }

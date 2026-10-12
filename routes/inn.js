@@ -6,6 +6,7 @@ const BV = require('../lib/innbackviews');
 const O = require('../lib/offices');
 const Wr = require('../lib/innwhere');
 const GV = require('../lib/inngameviews');
+const Hh = require('../lib/innhall');
 
 const tries = new Map();
 function limited(key, max, ms) {
@@ -30,7 +31,7 @@ module.exports = function (app, { checkCsrf, need }) {
 
   function viewOf(game, d) {
     const t = I.table(d.patron ? d.patron.id : '', game);
-    if (game === 'cards') return J.view(t, I.rulesOf(d.house), d.patron ? d.patron.purse : 0);
+    if (game === 'cards') return Object.assign(J.view(t, I.rulesOf(d.house), d.patron ? d.patron.purse : 0), { sides: t.round && t.round.sides || null, sideBets: t.sideBets || {} });
     return t;
   }
 
@@ -83,15 +84,47 @@ module.exports = function (app, { checkCsrf, need }) {
     res.redirect('/inn');
   });
 
+  app.post('/inn/tip', checkCsrf, (req, res) => {
+    const b = req.body || {};
+    const back = I.IDS.includes(String(b.back || '')) ? '/inn/' + b.back : '/inn';
+    const p = I.current(req);
+    if (!I.seated(p)) { req.session.flash = { err: true, text: 'Ask for a seat at the door first.' }; return res.redirect('/inn'); }
+    if (limited('inntip|' + p.id, 30, 60 * 60 * 1000)) { req.session.flash = { err: true, text: 'Brannoc waves you off. “Enough, enough.”' }; return res.redirect(back); }
+    try { const t = I.tip(p.id, b.amount); req.session.flash = { text: 'You tip ' + I.septims(t.amount) + '. ' + t.say }; }
+    catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect(back);
+  });
+
+  app.get('/inn/bard.json', (req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json({ list: Hh.bard().list }); });
+
+  app.post('/inn/ledger/notice', checkCsrf, need('inn'), (req, res) => {
+    const n = Hh.setNotice((req.body || {}).text, req.user);
+    req.session.flash = { text: n ? 'The notice is nailed up at the door.' : 'The notice is taken down.' };
+    res.redirect('/inn/ledger#hallcard');
+  });
+
+  app.post('/inn/ledger/happy', checkCsrf, need('inn'), (req, res) => {
+    const b = req.body || {};
+    try { const h = Hh.setHappy(String(b.game || ''), b.minutes, req.user, I.IDS); req.session.flash = { text: h ? 'Happy hour at ' + I.GAME[h.game].name + ' for ' + h.minutes + ' minutes.' : 'Happy hour is over.' }; }
+    catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/inn/ledger#hallcard');
+  });
+
+  app.post('/inn/ledger/bard', checkCsrf, need('inn'), (req, res) => {
+    try { const l = Hh.setBard((req.body || {}).list, req.user); req.session.flash = { text: l.length ? 'The bard has ' + l.length + (l.length === 1 ? ' song.' : ' songs.') : 'The bard’s list is empty.' }; }
+    catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/inn/ledger#hallcard');
+  });
+
   app.get('/inn/me', (req, res) => {
     const d = base(req);
     if (!I.seated(d.patron)) return res.redirect('/inn');
     d.record = I.record(d.patron.id);
-    res.page({ title: 'My purse · The Jerall View Inn', body: IV.mePage(d) });
+    res.page({ title: 'My purse · The Jerall View Inn', body: IV.mePageX(d) });
   });
 
   app.get('/inn/ledger', need('inn'), (req, res) => {
-    res.page({ title: 'The Inn Ledger', active: 'innledger', wide: true, body: IV.ledgerPage({ csrf: req.session.csrf, ledger: I.ledger(), house: I.house(), where: Wr.tonight(), next: Wr.tomorrow() }) });
+    res.page({ title: 'The Inn Ledger', active: 'innledger', wide: true, body: IV.ledgerPage({ csrf: req.session.csrf, coin: I.coinInHand(), ledger: I.ledger(), house: I.house(), where: Wr.tonight(), next: Wr.tomorrow() }) });
   });
 
   app.post('/inn/ledger/where', checkCsrf, need('inn'), (req, res) => {
@@ -157,7 +190,7 @@ module.exports = function (app, { checkCsrf, need }) {
     return I.live(15).filter(p => I.IDS.includes(p.lastGame)).sort((a, b) => String(a.name).localeCompare(String(b.name))).map(p => {
       const d = { user: null, csrf: '', patron: p, house, outcomes: {}, requests: [], net: 0 };
       d.view = viewOf(p.lastGame, d);
-      return { id: p.id, name: p.name, game: p.lastGame, purse: p.purse, held: p.held || 0, net: nets[p.id] || 0, at: p.lastAt, html: IV.watchPart(p.lastGame, d) };
+      return { tilt: (I.tilts().patrons[p.id] || {}).level || 0, id: p.id, name: p.name, game: p.lastGame, purse: p.purse, held: p.held || 0, net: nets[p.id] || 0, at: p.lastAt, html: IV.watchPart(p.lastGame, d) };
     });
   }
 
@@ -174,7 +207,7 @@ module.exports = function (app, { checkCsrf, need }) {
 
   app.get('/inn/ledger/live', need('inn'), (req, res) => {
     const rows = liveRows();
-    res.page({ title: 'The tables, live', active: 'innledger', wide: true, body: IV.livePage({ rows, feed: I.feed(15), back: liveBack(), summary: liveSummary(rows) }) });
+    res.page({ title: 'The tables, live', active: 'innledger', wide: true, body: IV.livePage({ csrf: req.session.csrf, tilts: I.tilts(), rows, feed: I.feed(15), back: liveBack(), summary: liveSummary(rows) }) });
   });
 
   app.get('/inn/ledger/live.json', need('inn'), (req, res) => {
@@ -183,8 +216,14 @@ module.exports = function (app, { checkCsrf, need }) {
     res.json({ cards: rows.map(r => ({ id: r.id, game: r.game, at: Date.parse(r.at) || 0, html: IV.liveCard(r) })), now: Date.now(), feed: IV.liveFeed(I.feed(15)), back: liveBack(), summary: IV.liveSummary(liveSummary(rows)) });
   });
 
+  app.post('/inn/ledger/tilt', checkCsrf, need('inn'), (req, res) => {
+    const b = req.body || {};
+    try { const lv = I.setTilt(b.kind === 'table' ? 'table' : 'patron', b.key, b.level, req.user); res.json({ ok: true, level: lv }); }
+    catch (e) { res.status(400).json({ error: e.message }); }
+  });
+
   app.get('/inn/fairness', need('inn'), (req, res) => {
-    res.page({ title: 'How the tables ran', active: 'innledger', wide: true, body: IV.fairnessPage({ csrf: req.session.csrf, week: I.week(require('../lib/town').weekKey()) }) });
+    res.page({ title: 'How the tables ran', active: 'innledger', wide: true, body: IV.fairnessPage({ csrf: req.session.csrf, coin: I.coinInHand(), week: I.week(require('../lib/town').weekKey()) }) });
   });
 
   app.post('/inn/ledger/reset', checkCsrf, need('inn'), (req, res) => {
@@ -260,7 +299,7 @@ module.exports = function (app, { checkCsrf, need }) {
       else if (what === 'rebuy') PvP.rebuy(id, p.id);
       else if (what === 'back') PvP.back(id, p.id);
       else if (what === 'say') { if (limited('innsay|' + p.id, 20, 60 * 1000)) throw new Error('Slow down; let the others get a word in.'); PvP.say(id, p.id, b.text); }
-      else PvP.act(id, p.id, what, { q: b.q, f: b.f, to: b.to, from: b.from, at: b.at, side: b.side, choice: b.choice, amount: b.amount, k: b.k });
+      else PvP.act(id, p.id, what, { q: b.q, f: b.f, to: b.to, from: b.from, at: b.at, side: b.side, choice: b.choice, amount: b.amount, k: b.k, pp: b.pp, t3: b.t3 });
     } catch (e) { return fail(400, e.message); }
     if (what === 'leave' && !json) return res.redirect('/inn/back');
     if (!json) return res.redirect(back);
@@ -350,7 +389,7 @@ module.exports = function (app, { checkCsrf, need }) {
     const d = base(req);
     d.view = viewOf(game, d);
     d.lastBet = (req.session.innBet || {})[game];
-    const reply = { html: IV.part(game, d), purse: d.patron ? d.patron.purse : 0, lastout: IV.lastOut(game, d.outcomes[game]) };
+    const reply = { html: IV.part(game, d), purse: d.patron ? d.patron.purse : 0, lastout: IV.lastOut(game, d.outcomes[game]), happy: out.happy || 0 };
     if (game === 'cards' && out.settled && d.view.frames && d.view.frames.length > 1) {
       const hands = d.view.hands.map(h => Object.assign({}, h, { result: '', active: false }));
       reply.frames = d.view.frames.map((f, i) => IV.cardsPart(d, { dealer: f, dealerTotal: J.total(f).n, hands, say: i ? I.KEEPER + ' draws. He has ' + J.total(f).n + '.' : I.KEEPER + ' turns his card.', tone: '', staked: 0, frame: true }));
