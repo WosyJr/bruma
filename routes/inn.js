@@ -5,6 +5,7 @@ const PvP = require('../lib/innpvp');
 const BV = require('../lib/innbackviews');
 const O = require('../lib/offices');
 const Wr = require('../lib/innwhere');
+const GV = require('../lib/inngameviews');
 
 const tries = new Map();
 function limited(key, max, ms) {
@@ -153,12 +154,18 @@ module.exports = function (app, { checkCsrf, need }) {
   function liveRows() {
     const house = I.house();
     const nets = I.nets();
-    return I.live(15).filter(p => I.IDS.includes(p.lastGame)).map(p => {
+    return I.live(15).filter(p => I.IDS.includes(p.lastGame)).sort((a, b) => String(a.name).localeCompare(String(b.name))).map(p => {
       const d = { user: null, csrf: '', patron: p, house, outcomes: {}, requests: [], net: 0 };
       d.view = viewOf(p.lastGame, d);
-      const secs = Math.round((Date.now() - Date.parse(p.lastAt)) / 1000);
-      return { id: p.id, name: p.name, game: p.lastGame, purse: p.purse, held: p.held || 0, net: nets[p.id] || 0, html: IV.watchPart(p.lastGame, d), ago: secs < 60 ? 'Last move ' + secs + ' seconds ago' : 'Last move ' + Math.round(secs / 60) + ' minutes ago' };
+      return { id: p.id, name: p.name, game: p.lastGame, purse: p.purse, held: p.held || 0, net: nets[p.id] || 0, at: p.lastAt, html: IV.watchPart(p.lastGame, d) };
     });
+  }
+
+  function liveSummary(rows) {
+    const since = Date.now() - 15 * 60000;
+    const recent = I.feed(400).filter(x => Date.parse(x.at) >= since);
+    const staked = recent.reduce((n, x) => n + x.staked, 0), returned = recent.reduce((n, x) => n + x.returned, 0);
+    return { players: rows.length, rounds: recent.length, staked, house: staked - returned, rooms: PvP.open().length };
   }
 
   function liveBack() {
@@ -166,12 +173,14 @@ module.exports = function (app, { checkCsrf, need }) {
   }
 
   app.get('/inn/ledger/live', need('inn'), (req, res) => {
-    res.page({ title: 'The tables, live', active: 'innledger', wide: true, body: IV.livePage({ rows: liveRows(), feed: I.feed(15), back: liveBack() }) });
+    const rows = liveRows();
+    res.page({ title: 'The tables, live', active: 'innledger', wide: true, body: IV.livePage({ rows, feed: I.feed(15), back: liveBack(), summary: liveSummary(rows) }) });
   });
 
   app.get('/inn/ledger/live.json', need('inn'), (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ tables: IV.liveTables(liveRows()), feed: IV.liveFeed(I.feed(15)), back: liveBack() });
+    const rows = liveRows();
+    res.json({ cards: rows.map(r => ({ id: r.id, game: r.game, at: Date.parse(r.at) || 0, html: IV.liveCard(r) })), now: Date.now(), feed: IV.liveFeed(I.feed(15)), back: liveBack(), summary: IV.liveSummary(liveSummary(rows)) });
   });
 
   app.get('/inn/fairness', need('inn'), (req, res) => {
@@ -269,6 +278,37 @@ module.exports = function (app, { checkCsrf, need }) {
     res.json({ no: k.no, nextAt: k.nextAt, now: Date.now(), last: k.last ? { no: k.last.no, balls: k.last.balls } : null, html: IV.part('keno', d), purse: d.patron.purse, lastout: IV.lastOut('keno', d.outcomes.keno) });
   });
 
+  const evState = (req, game) => {
+    const d = base(req);
+    d.view = viewOf(game, d);
+    d.lastBet = (req.session.innBet || {})[game];
+    const p = GV.eventParts(game, d);
+    return { meta: p.meta, now: Date.now(), parts: { stage: p.stage, ctl: p.ctl, list: p.list, hist: p.hist }, purse: d.patron.purse, lastout: IV.lastOut(game, d.outcomes[game]) };
+  };
+
+  app.get('/inn/:game/state.json', (req, res, next) => {
+    const game = String(req.params.game);
+    if (!GV.EVENT.includes(game)) return next();
+    res.setHeader('Cache-Control', 'no-store');
+    if (!I.seated(I.current(req))) return res.status(403).json({ error: 'Ask for a seat at the door first.' });
+    res.json(evState(req, game));
+  });
+
+  app.post('/inn/ledger/bout', checkCsrf, need('inn'), (req, res) => {
+    try { const pb = I.postBout(req.body || {}, req.user); req.session.flash = { text: pb.fighters[0].name + ' against ' + pb.fighters[1].name + ' is posted. Betting is open.' }; }
+    catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/inn/ledger#arenabouts');
+  });
+
+  app.post('/inn/ledger/bout/:id/:what', checkCsrf, need('inn'), (req, res) => {
+    const what = String(req.params.what);
+    try {
+      const pb = I.settleBout(req.params.id, what, req.user);
+      req.session.flash = { text: what === 'close' ? 'Betting on ' + pb.fighters[0].name + ' against ' + pb.fighters[1].name + ' is closed.' : (what === 'void' ? 'The bout is called off; every stake is handed back.' : pb.fighters[pb.winner].name + ' won. ' + pb.bets.filter(b => b.returned).length + ' winning ' + (pb.bets.filter(b => b.returned).length === 1 ? 'bet is' : 'bets are') + ' paid.') };
+    } catch (e) { req.session.flash = { err: true, text: e.message }; }
+    res.redirect('/inn/ledger#arenabouts');
+  });
+
   app.post('/inn/:game/learned', checkCsrf, (req, res) => {
     const game = String(req.params.game);
     if (!I.GAME[game]) return res.status(404).end();
@@ -306,6 +346,7 @@ module.exports = function (app, { checkCsrf, need }) {
     catch (e) { return fail(400, e.message); }
     if (b.bet) req.session.innBet = Object.assign({}, req.session.innBet, { [game]: Math.floor(Number(b.bet)) || undefined });
     if (!json) return res.redirect(back);
+    if (GV.EVENT.includes(game)) return res.json(Object.assign(evState(req, game), { cashedAt: out.cashedAt || null }));
     const d = base(req);
     d.view = viewOf(game, d);
     d.lastBet = (req.session.innBet || {})[game];
@@ -322,6 +363,8 @@ module.exports = function (app, { checkCsrf, need }) {
         return IV.bonesPart(d, { dice: s.dice, pot: s.pot, you, inn, say: s.say, tone: s.tone, turn: s.who, frame: true, over: false });
       });
     }
+    if (game === 'slots') { reply.grid = d.view.last.grid; reply.won = d.view.last.won; reply.jackpot = d.view.jackpot; }
+    if (game === 'plinko') { const l = d.view.last; reply.drop = { path: l.path, slot: l.slot, mult: l.mult, returned: l.returned, staked: l.staked, risk: l.risk }; }
     if (game === 'wheel') reply.spin = out.spin;
     if (game === 'six') reply.slot = out.slot;
     if (game === 'punto' && out.steps) {

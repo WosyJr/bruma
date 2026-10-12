@@ -431,5 +431,6 @@
     setInterval(kpoll, 2000);
   }
 
+  window.InnUI = { setPurse: setPurse, result: result, burst: burst, say: say, fmt: fmt };
   wire();
 })();

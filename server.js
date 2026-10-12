@@ -133,6 +133,7 @@ require('./lib/announce').install();
   setInterval(reckon, 15 * 60 * 1000).unref();
   const Inn = require('./lib/inn');
   setInterval(() => { try { Inn.kenoDraw(); } catch (e) { console.error('lottery', e.message); } }, 5000).unref();
+  setInterval(() => { try { Inn.eventsTick(); } catch (e) { console.error('events', e.message); } }, 500).unref();
 }
 
 app.get('/healthz', (req, res) => res.json({ ok: true }));
