@@ -138,6 +138,7 @@
         if (!x.ok) { form.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); flash(x.j.error || 'That did not work.'); return; }
         if (/\/leave$/.test(action)) { window.location.href = '/inn/back'; return; }
         if (x.j.go) { window.location.href = x.j.go; return; }
+        if (/\/join$/.test(action) && !document.querySelector('[data-say-form]')) { window.location.reload(); return; }
         if (/\/say$/.test(action)) { var inp = form.querySelector('input[name=text]'); if (inp) inp.value = ''; }
         pending = null;
         if (document.activeElement && tbl.contains(document.activeElement)) document.activeElement.blur();
@@ -260,6 +261,21 @@
 
   var sayForm = document.querySelector('[data-say-form]');
   if (sayForm) sayForm.addEventListener('submit', function (e) { e.preventDefault(); send(sayForm, sayForm.getAttribute('action')); });
+  var lastPhrase = 0;
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-phrase]');
+    if (!b || !sayForm) return;
+    if (Date.now() - lastPhrase < 2500) return;
+    lastPhrase = Date.now();
+    var inp = sayForm.querySelector('input[name=text]');
+    var em = sayForm.querySelector('input[name=emote]');
+    var was = inp.value;
+    inp.value = b.getAttribute('data-phrase');
+    if (em) em.value = b.getAttribute('data-emote') ? '1' : '';
+    send(sayForm, sayForm.getAttribute('action'));
+    inp.value = was;
+    if (em) em.value = '';
+  });
 
   document.addEventListener('focusout', function () { setTimeout(function () { if (pending && !(document.activeElement && tbl.contains(document.activeElement))) apply(pending); }, 50); });
 

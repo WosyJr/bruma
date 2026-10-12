@@ -29,6 +29,7 @@
   }
   function lock(on) { tbl.querySelectorAll('button, input, select').forEach(function (b) { if (on) { b.dataset.was = b.disabled ? '1' : ''; b.disabled = true; } else { b.disabled = b.dataset.was === '1'; } }); }
   function flash(tone) {
+    if (window.InnBrannoc) window.InnBrannoc.mood(tone === 'good' ? 'win' : 'loss');
     if (reduce) return;
     inn.classList.remove('flash-good', 'flash-bad'); void inn.offsetWidth;
     inn.classList.add(tone === 'good' ? 'flash-good' : 'flash-bad');
@@ -118,13 +119,14 @@
         ctx.globalCompositeOperation = 'source-over';
         strokes++;
         if (Date.now() - lastChip > 160) { lastChip = Date.now(); Snd.chip(); }
-        if (strokes > 6 && strokes % 4 === 0 && ratio() > 0.45) reveal();
+        if (strokes > 8 && ratio() > 0.45) reveal();
       };
       if (reduce) { cv.addEventListener('click', reveal); cv.title = 'Break the seal'; return { reveal: reveal }; }
       cv.addEventListener('pointerdown', function (e) { down = true; try { cv.setPointerCapture && cv.setPointerCapture(e.pointerId); } catch (x) {} rub(e); });
-      cv.addEventListener('pointerup', function () { down = false; if (!gone && strokes > 10 && ratio() > 0.4) reveal(); });
+      cv.addEventListener('pointerup', function () { down = false; if (!gone && strokes > 8 && ratio() > 0.35) reveal(); });
+      cv.addEventListener('pointerleave', function () { if (!gone && strokes > 8 && ratio() > 0.35) reveal(); });
       cv.addEventListener('pointermove', function (e) { if (down || e.buttons || e.pointerType === 'touch') rub(e); });
-      cv.addEventListener('click', function () { strokes += 2; if (strokes > 24) reveal(); });
+      cv.addEventListener('click', function () { strokes += 3; if (strokes > 12 && ratio() > 0.3) reveal(); else if (strokes > 24) reveal(); });
       return { reveal: reveal };
     };
     tbl.addEventListener('submit', function (e) {

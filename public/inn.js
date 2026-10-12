@@ -175,6 +175,50 @@
     function check(n) { if (Number(n) === 0) show(); }
     return { show: show, check: check };
   })();
+  var Brannoc = (function () {
+    var host = document.querySelector('#inn[data-game]');
+    if (!host) return null;
+    var game = host.getAttribute('data-game');
+    var lastAt = 0, lastMood = 0, el = null, hideT = null;
+    function show(j) {
+      if (!j || !j.text) return;
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'brannocbub';
+        el.innerHTML = '<span class="bwho">🍺 Old Brannoc</span><span class="bline"></span>';
+        document.body.appendChild(el);
+      }
+      el.querySelector('.bline').textContent = j.text;
+      el.classList.remove('on');
+      void el.offsetWidth;
+      el.classList.add('on');
+      clearTimeout(hideT);
+      hideT = setTimeout(function () { el.classList.remove('on'); }, 9500);
+    }
+    function fetchLine(mood) {
+      if (document.hidden) return;
+      lastAt = Date.now();
+      fetch('/inn/mutter.json?game=' + encodeURIComponent(game) + (mood ? '&mood=' + mood : ''), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(show)
+        .catch(function () {});
+    }
+    function loop() {
+      var wait = 70000 + Math.random() * 50000;
+      setTimeout(function () { if (Date.now() - lastAt > 55000) fetchLine(''); loop(); }, wait);
+    }
+    setTimeout(function () { fetchLine(''); }, 22000 + Math.random() * 38000);
+    loop();
+    return {
+      mood: function (m) {
+        if (Date.now() - lastMood < 50000 || Math.random() > 0.35) return;
+        lastMood = Date.now();
+        fetchLine(m);
+      }
+    };
+  })();
+  window.InnBrannoc = Brannoc;
+
   window.InnBroke = Broke;
   document.addEventListener('click', function (e) {
     var a = e.target.closest && e.target.closest('a[href="/inn#purse"]');
@@ -261,7 +305,9 @@
     var tone = s ? (s.classList.contains('good') ? 'good' : (s.classList.contains('bad') ? 'bad' : '')) : '';
     if (!tone) return;
     var big = /blackjack|Luck|ONE HIT|35 to 1|pays out the pot|counts it out/i.test(s.textContent);
+    if (window.InnBrannoc) window.InnBrannoc.mood(tone === 'good' ? 'win' : 'loss');
     if (tone === 'good') { big ? Snd.big() : Snd.win(); } else Snd.lose();
+    if (window.InnBrannoc) window.InnBrannoc.mood(tone === 'good' ? 'win' : 'loss');
     if (reduce) return;
     inn.classList.remove('flash-good', 'flash-bad'); void inn.offsetWidth;
     inn.classList.add(tone === 'good' ? 'flash-good' : 'flash-bad');

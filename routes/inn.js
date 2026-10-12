@@ -129,7 +129,28 @@ module.exports = function (app, { checkCsrf, need }) {
   app.get('/inn/door.json', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const p = I.current(req);
-    res.json({ status: p ? p.status : 'none' });
+    const out = { status: p ? p.status : 'none' };
+    if (p && p.status === 'waiting') {
+      const h = IV.doorHark();
+      out.hark = h.slice(h.indexOf('>') + 1, h.lastIndexOf('<'));
+    }
+    res.json(out);
+  });
+
+  app.get('/inn/mutter.json', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const p = I.current(req);
+    if (!I.seated(p)) return res.status(403).json({ error: 'quiet' });
+    if (limited('mutter|' + p.id, 30, 10 * 60 * 1000)) return res.json({ text: '' });
+    try { res.json(I.mutter(p.id, String(req.query.game || ''), String(req.query.mood || ''))); }
+    catch (e) { res.status(400).json({ error: e.message }); }
+  });
+
+  app.get('/inn/ledger/night', need('inn'), (req, res) => {
+    const d = base(req);
+    d.sheet = I.nightSheet(String(req.query.night || ''));
+    res.page({ title: 'The night’s sheet · The Jerall View Inn', wide: true, body: IV.nightPage(d),
+      after: IV.bardTag() + '<script>(function(){var b=document.querySelector("[data-print]");if(b)b.addEventListener("click",function(){window.print();});})();</script>' });
   });
 
   app.post('/inn/ledger/tourney', checkCsrf, need('inn'), (req, res) => {
@@ -383,7 +404,7 @@ module.exports = function (app, { checkCsrf, need }) {
       else if (what === 'leave') PvP.leave(id, p.id);
       else if (what === 'rebuy') PvP.rebuy(id, p.id);
       else if (what === 'back') PvP.back(id, p.id);
-      else if (what === 'say') { if (limited('innsay|' + p.id, 20, 60 * 1000)) throw new Error('Slow down; let the others get a word in.'); PvP.say(id, p.id, b.text); }
+      else if (what === 'say') { if (limited('innsay|' + p.id, 20, 60 * 1000)) throw new Error('Slow down; let the others get a word in.'); PvP.say(id, p.id, b.text, b.emote === '1'); }
       else PvP.act(id, p.id, what, { q: b.q, f: b.f, to: b.to, from: b.from, at: b.at, side: b.side, choice: b.choice, amount: b.amount, k: b.k, pp: b.pp, t3: b.t3 });
     } catch (e) { return fail(400, e.message); }
     if (what === 'leave' && !json) return res.redirect('/inn/back');

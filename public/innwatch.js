@@ -71,6 +71,8 @@
     ['[data-scratch]', 'seals', 'The Three Seals', 'Scratch the wax with your pointer, or tap a seal. Three alike pays, up to the Dragon at 100 times.'],
     ['[data-tourney]', 'tourney', 'A tournament', 'Join for the buy-in. Your winnings at that table count until time is called, and the top three split the pot.'],
     ['[data-rankcard]', 'rank', 'Your standing', 'Every septim you stake counts toward Copper, Silver, Gold and Dragon. Higher standing stretches Brannoc’s favour.'],
+    ['.pvphrases', 'phrases', 'Table talk', 'One tap tosses a phrase across the table. Or type your own below.'],
+    ['a[href="/inn/ledger/night"]', 'nightsheet', 'The night’s sheet', 'One printable page of the whole night: tables, coin, tips and tournaments.'],
     ['.coincard', 'coin', 'Coin in hand', 'What the keepers should be holding in game, what is owed to patrons, and what is the house’s own.'],
     ['#tourneycard', 'tourneycard', 'A tournament', 'Open a timed contest at the Lever, the Avalanche or the Seals. Buy-ins make the pot; the house keeps its cut.'],
     ['#dresscard', 'dress', 'Dressing the hall', 'Dress every inn page for a festival: New Life, Harvest’s End, the Witches’ Festival or Mid Year.'],
