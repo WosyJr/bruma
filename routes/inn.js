@@ -112,6 +112,14 @@ module.exports = function (app, { checkCsrf, need }) {
 
   app.get('/inn/bard.json', (req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json({ list: Hh.bard().list }); });
 
+  app.post('/inn/ledger/open', checkCsrf, need('inn'), (req, res) => {
+    const b = req.body || {};
+    const open = b.all === 'open' ? I.ALL_IDS : [].concat(b.open || []).map(String);
+    const shut = I.setClosed(I.ALL_IDS.filter(g => !open.includes(g)), req.user);
+    req.session.flash = { text: shut.length ? 'Closed tonight: ' + shut.map(g => I.GAME[g].name).join(', ') + '.' : 'Every table is open.' };
+    res.redirect('/inn/ledger#opencard');
+  });
+
   app.post('/inn/ledger/notice', checkCsrf, need('inn'), (req, res) => {
     const n = Hh.setNotice((req.body || {}).text, req.user);
     req.session.flash = { text: n ? 'The notice is nailed up at the door.' : 'The notice is taken down.' };
@@ -295,7 +303,7 @@ module.exports = function (app, { checkCsrf, need }) {
     res.json(stateOf(req, r));
   });
 
-  const ROOMACTS = ['join', 'start', 'leave', 'rebuy', 'back', 'say', 'throw', 'bank', 'bid', 'liar', 'fold', 'check', 'call', 'raise', 'allin', 'bet', 'insure', 'noinsure', 'hit', 'stand', 'double', 'split', 'surrender', 'place', 'move', 'take', 'pick', 'draw', 'choose'];
+  const ROOMACTS = ['join', 'start', 'leave', 'rebuy', 'back', 'say', 'throw', 'bank', 'bid', 'liar', 'fold', 'check', 'call', 'raise', 'allin', 'bet', 'insure', 'noinsure', 'hit', 'stand', 'double', 'split', 'surrender', 'place', 'move', 'take', 'pick', 'draw', 'choose', 'rematch'];
   app.post('/inn/room/:id/:what', checkCsrf, (req, res, next) => {
     const id = String(req.params.id);
     const what = String(req.params.what);
@@ -308,6 +316,7 @@ module.exports = function (app, { checkCsrf, need }) {
     if (limited('innpvp|' + p.id, 120, 60 * 1000)) return fail(429, 'Easy, traveller. Give the table a moment.');
     const b = req.body || {};
     try {
+      if (what === 'rematch') { const nr = PvP.rematch(id, p.id); return json ? res.json({ go: '/inn/room/' + nr.id }) : res.redirect('/inn/room/' + nr.id); }
       if (what === 'join') PvP.join(id, p.id);
       else if (what === 'start') PvP.start(id, p.id);
       else if (what === 'leave') PvP.leave(id, p.id);

@@ -137,6 +137,7 @@
         sending = false;
         if (!x.ok) { form.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); flash(x.j.error || 'That did not work.'); return; }
         if (/\/leave$/.test(action)) { window.location.href = '/inn/back'; return; }
+        if (x.j.go) { window.location.href = x.j.go; return; }
         if (/\/say$/.test(action)) { var inp = form.querySelector('input[name=text]'); if (inp) inp.value = ''; }
         pending = null;
         if (document.activeElement && tbl.contains(document.activeElement)) document.activeElement.blur();
