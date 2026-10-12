@@ -20,6 +20,8 @@
   }
   function applyFilter() {
     var csrf = document.querySelector('[data-csrf]');
+  var thumbs = document.querySelector('[data-thumbs]');
+  if (thumbs) { document.body.classList.remove('thumbs'); thumbs.open = false; thumbs.addEventListener('toggle', function () { document.body.classList.toggle('thumbs', thumbs.open); }); }
   document.addEventListener('change', function (e) {
     var sel = e.target.closest && e.target.closest('select[data-tilt]');
     if (!sel || !csrf) return;

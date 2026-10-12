@@ -99,6 +99,9 @@
       var m = Number(e.target.value), out = [], bf = tbl.querySelector('[data-barrow]'), edge = bf ? Number(bf.getAttribute('data-edge')) || 0.92 : 0.92;
       [1, 2, 3, 5, 8].forEach(function (k) { if (k > 25 - m) return; var v = 1; for (var i = 0; i < k; i++) v *= (25 - i) / (25 - m - i); out.push(k + (k === 1 ? ' stone' : ' stones') + ' ×' + (Math.floor(v * edge * 100) / 100).toFixed(2)); });
       lad.textContent = out.join(' · ');
+      var mins = {}; try { mins = JSON.parse(bf.getAttribute('data-mins')); } catch (x) {}
+      var need = m >= 18 ? mins.c : (m >= 10 ? mins.b : mins.a), stk = tbl.querySelector('[data-stake]');
+      if (stk && need && (Number(String(stk.value).replace(/[^\d]/g, '')) || 0) < need) { stk.value = need; stk.classList.remove('bumped'); void stk.offsetWidth; stk.classList.add('bumped'); }
     });
     tbl.addEventListener('submit', function (e) {
       var form = e.target.closest('form[data-play]');
@@ -145,7 +148,9 @@
         var tx = g.querySelector('text'); if (tx) tx.textContent = t[i] + '×';
       });
     };
-    tbl.addEventListener('change', function (e) { if (e.target.matches('[data-risk]')) { paintRisk(e.target.value); Snd.click(); } });
+    var bumpMin = function (risk) { var f = felt(), mins = {}; try { mins = JSON.parse(f.getAttribute('data-mins')); } catch (x) {} var st = tbl.querySelector('[data-stake]'); var m = Number(mins[risk]) || 0; if (st && m && (Number(String(st.value).replace(/[^\d]/g, '')) || 0) < m) { st.value = m; st.classList.remove('bumped'); void st.offsetWidth; st.classList.add('bumped'); } };
+    tbl.addEventListener('change', function (e) { if (e.target.matches('[data-risk]')) { paintRisk(e.target.value); bumpMin(e.target.value); Snd.click(); } });
+    var r0 = tbl.querySelector('[data-risk]:checked'); if (r0) bumpMin(r0.value);
     var recent = function (d) {
       var box = tbl.querySelector('[data-avarecent]'); if (!box) return;
       var i = document.createElement('i'); i.className = 'pk ' + (d.mult >= 10 ? 'hot' : (d.mult >= 1 ? 'good' : 'bad')); i.textContent = d.mult + '×';

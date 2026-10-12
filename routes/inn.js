@@ -38,7 +38,7 @@ module.exports = function (app, { checkCsrf, need }) {
   app.get('/inn', (req, res) => {
     const d = base(req);
     d.backOpen = PvP.open().length;
-    res.page({ title: 'The Jerall View Inn', wide: true, body: IV.lobby(d) });
+    res.page({ title: 'The Jerall View Inn', wide: true, body: IV.lobby(d), after: IV.bardTag() + IV.doorWatch(d) });
   });
 
   app.post('/inn/ask', checkCsrf, (req, res) => {
@@ -95,6 +95,14 @@ module.exports = function (app, { checkCsrf, need }) {
     res.redirect(back);
   });
 
+  app.get('/inn/door.json', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const p = I.current(req);
+    res.json({ status: p ? p.status : 'none' });
+  });
+
+  app.get('/inn/bard', (req, res) => { res.setHeader('Cache-Control', 'no-store'); res.type('html').send(IV.bardWindow()); });
+
   app.get('/inn/bard.json', (req, res) => { res.setHeader('Cache-Control', 'no-store'); res.json({ list: Hh.bard().list }); });
 
   app.post('/inn/ledger/notice', checkCsrf, need('inn'), (req, res) => {
@@ -120,7 +128,7 @@ module.exports = function (app, { checkCsrf, need }) {
     const d = base(req);
     if (!I.seated(d.patron)) return res.redirect('/inn');
     d.record = I.record(d.patron.id);
-    res.page({ title: 'My purse · The Jerall View Inn', body: IV.mePageX(d) });
+    res.page({ title: 'My purse · The Jerall View Inn', body: IV.mePage(d), after: IV.bardTag() });
   });
 
   app.get('/inn/ledger', need('inn'), (req, res) => {
@@ -253,7 +261,7 @@ module.exports = function (app, { checkCsrf, need }) {
     const d = base(req);
     d.open = PvP.open().map(r => PvP.tick(r.id) || r).filter(r => r.status !== 'done');
     d.recent = PvP.recent();
-    res.page({ title: 'The back room · The Jerall View Inn', wide: true, body: BV.backPage(d) });
+    res.page({ title: 'The back room · The Jerall View Inn', wide: true, body: BV.backPage(d), after: IV.bardTag() });
   });
 
   app.post('/inn/back/open', checkCsrf, (req, res) => {
@@ -268,7 +276,7 @@ module.exports = function (app, { checkCsrf, need }) {
     const r = PvP.tick(req.params.id);
     if (!r) return next();
     if (!canWatch(req)) { req.session.flash = { err: true, text: 'Ask for a seat at the door first.' }; return res.redirect('/inn'); }
-    res.page({ title: r.title + ' · The back room', wide: true, body: BV.roomPage(roomData(req, r), r) });
+    res.page({ title: r.title + ' · The back room', wide: true, body: BV.roomPage(roomData(req, r), r), after: IV.bardTag() });
   });
 
   app.get('/inn/room/:id/state.json', (req, res) => {
@@ -365,7 +373,7 @@ module.exports = function (app, { checkCsrf, need }) {
     d.view = viewOf(game, d);
     d.lastBet = (req.session.innBet || {})[game];
     d.tutorial = !learned(req, game);
-    res.page({ title: I.GAME[game].name + ' · The Jerall View Inn', wide: true, body: IV.tablePage(game, d) });
+    res.page({ title: I.GAME[game].name + ' · The Jerall View Inn', wide: true, body: IV.tablePage(game, d), after: IV.bardTag() });
   });
 
   app.post('/inn/:game/:what', checkCsrf, (req, res, next) => {
