@@ -65,6 +65,7 @@ app.use((req, res, next) => {
 });
 
 app.use(require('./lib/ledger').middleware);
+app.use(require('./lib/closure').middleware);
 
 app.use((req, res, next) => {
   if (!req.user || !req.user.mustChange) return next();
@@ -85,8 +86,11 @@ const back = (req, fallback) => {
   return b.startsWith('/') && !b.startsWith('//') ? b : fallback;
 };
 
+const OPEN_WHEN_CLOSED = ['archread'];
+
 function need(perm) {
   return (req, res, next) => {
+    if (!req.user && OPEN_WHEN_CLOSED.indexOf(perm) > -1 && require('./lib/closure').isClosed()) return next();
     if (!req.user) return res.redirect('/login?to=' + encodeURIComponent(req.originalUrl));
     if (O.can(req.user, perm)) return next();
     next('forbidden');
@@ -104,6 +108,7 @@ function needAny() {
 
 const ctx = { checkCsrf, wrap, back, need, needAny };
 
+require('./routes/closure')(app, ctx);
 require('./routes/public')(app, ctx);
 require('./routes/open')(app, ctx);
 require('./routes/watch')(app, ctx);
