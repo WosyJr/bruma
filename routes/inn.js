@@ -114,7 +114,12 @@ module.exports = function (app, { checkCsrf, need }) {
       return res.page({ title: 'Tip Brannoc', body: IV.tipConfirm({ csrf: req.session.csrf, amount: a, back: I.IDS.includes(String(b.back || '')) ? b.back : '', purse: p.purse, cap: I.rankOf(p.id).cap }) });
     }
     if (limited('inntip|' + p.id, 30, 60 * 60 * 1000)) { req.session.flash = { err: true, text: 'Brannoc waves you off. “Enough, enough.”' }; return res.redirect(back); }
-    try { const t = I.tip(p.id, b.amount); req.session.flash = { text: 'You tip ' + I.septims(t.amount) + '. ' + t.say + ' Luck leans your way for a minute on stakes up to ' + I.septims(t.favour.cap) + '.' }; }
+    try {
+      const t = I.tip(p.id, b.amount);
+      req.session.flash = t.granted
+        ? { text: 'You tip ' + I.septims(t.amount) + '. ' + t.say + ' Luck leans your way for a minute on stakes up to ' + I.septims(t.favour.cap) + '.' }
+        : { text: 'You tip ' + I.septims(t.amount) + '. Brannoc takes it with a nod, but your luck is already spoken for. He will look kindly on another in ' + Math.max(1, Math.ceil((t.nextAt - Date.now()) / 60000)) + ' minutes.' };
+    }
     catch (e) { req.session.flash = { err: true, text: e.message }; }
     res.redirect(back);
   });
